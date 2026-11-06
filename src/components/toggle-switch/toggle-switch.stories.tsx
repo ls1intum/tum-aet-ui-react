@@ -92,7 +92,7 @@ export const Invalid: Story = {
 export const InFormField: Story = {
   render: () => (
     <FormField label="Notifications" hint="Sent once a week">
-      <ToggleSwitch />
+      {(field) => <ToggleSwitch {...field} />}
     </FormField>
   ),
 };

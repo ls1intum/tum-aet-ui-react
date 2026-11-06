@@ -1,6 +1,7 @@
 import {
   useLayoutEffect,
   useRef,
+  useId,
   type ChangeEvent,
   type CSSProperties,
   type InputHTMLAttributes,
@@ -10,7 +11,6 @@ import { cx } from '../../internal/cx';
 import { CheckIcon, MinusIcon } from '../../internal/icons';
 import { mergeRefs } from '../../internal/merge-refs';
 import { useControllable } from '../../internal/use-controllable';
-import { useFormFieldControl } from '../form-field/form-field';
 
 export interface CheckboxProps extends Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -24,7 +24,7 @@ export interface CheckboxProps extends Omit<
   onChange?: (checked: boolean, event: ChangeEvent<HTMLInputElement>) => void;
   /** Shows the partial-selection dash. Purely visual and exposed as the native indeterminate state; `checked` is unchanged. */
   indeterminate?: boolean;
-  /** Marks the checkbox invalid (also set by an enclosing invalid FormField). */
+  /** Marks the checkbox invalid (set aria-invalid for external errors). */
   invalid?: boolean;
   /** Class of the wrapper element. */
   className?: string;
@@ -52,7 +52,9 @@ export function Checkbox({
   'aria-invalid': ariaInvalid,
   ...rest
 }: CheckboxProps) {
-  const control = useFormFieldControl({ id, invalid, 'aria-describedby': describedBy, 'aria-invalid': ariaInvalid });
+  const generatedId = useId();
+  const controlId = id ?? generatedId;
+  const isInvalid = invalid === true || ariaInvalid === true || ariaInvalid === 'true';
   const [isChecked, setChecked] = useControllable<boolean>(checked, defaultChecked);
   const inputRef = useRef<HTMLInputElement>(null);
   useLayoutEffect(() => {
@@ -70,15 +72,15 @@ export function Checkbox({
       data-checked={isChecked || undefined}
       data-indeterminate={indeterminate || undefined}
       data-disabled={disabled === true || undefined}
-      data-invalid={control.invalid || undefined}
+      data-invalid={isInvalid || undefined}
     >
       <input
         {...rest}
         ref={mergeRefs(inputRef, ref)}
         type="checkbox"
-        id={control.id}
-        aria-describedby={control['aria-describedby']}
-        aria-invalid={control['aria-invalid']}
+        id={controlId}
+        aria-describedby={describedBy}
+        aria-invalid={ariaInvalid ?? (invalid === true ? true : undefined)}
         className="tumaet-ui-checkbox-input"
         checked={isChecked}
         disabled={disabled}

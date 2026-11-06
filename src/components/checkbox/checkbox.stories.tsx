@@ -106,7 +106,7 @@ export const Invalid: Story = {
 export const InFormField: Story = {
   render: () => (
     <FormField label="Terms" hint="You need to accept before continuing">
-      <Checkbox />
+      {(field) => <Checkbox {...field} />}
     </FormField>
   ),
 };

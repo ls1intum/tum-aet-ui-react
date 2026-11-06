@@ -91,7 +91,7 @@ describe('Checkbox', () => {
   it('takes id, description and invalid state from a FormField', () => {
     render(
       <FormField label="Agree" hint="Required to continue" invalid error="Accept the terms">
-        <Checkbox />
+        {(field) => <Checkbox {...field} />}
       </FormField>,
     );
     const box = screen.getByRole('checkbox', { name: 'Agree' });

@@ -82,7 +82,7 @@ describe('ToggleSwitch', () => {
   it('takes description and invalid state from a FormField', () => {
     render(
       <FormField label="Mail" hint="Weekly digest" invalid error="Not available">
-        <ToggleSwitch />
+        {(field) => <ToggleSwitch {...field} />}
       </FormField>,
     );
     const sw = screen.getByRole('switch', { name: 'Mail' });

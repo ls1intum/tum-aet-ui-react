@@ -23,7 +23,6 @@ import {
   useTypeahead,
   valuesMatch,
 } from './use-listbox';
-import { useFormFieldControl } from '../form-field/form-field';
 
 export type SelectSize = 'small' | 'default' | 'large';
 
@@ -111,10 +110,9 @@ export function Select({
   // Moves focus to the search field when the popup opens and mounts it.
   const focusOnMount = useCallback((node: HTMLInputElement | null) => node?.focus(), []);
   const generatedId = useId();
-  const field = useFormFieldControl({ id: ownId, 'aria-describedby': ownDescribedBy, 'aria-invalid': ownInvalid });
-  const ariaDescribedBy = field['aria-describedby'];
-  const ariaInvalid = field['aria-invalid'];
-  const triggerId = ownId ?? field.id;
+  const ariaDescribedBy = ownDescribedBy;
+  const ariaInvalid = ownInvalid;
+  const triggerId = ownId ?? generatedId;
   const listboxId = `${generatedId}-listbox`;
   const root = useRef<HTMLDivElement | null>(null);
   const trigger = useRef<HTMLButtonElement | null>(null);

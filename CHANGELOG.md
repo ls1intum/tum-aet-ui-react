@@ -2,6 +2,22 @@
 
 All notable changes to `@tumaet/ui-react`. The version numbers are independent of `@tumaet/ui-angular`.
 
+## 0.2.0 (unreleased)
+
+- Layer tokens, base rules and components under `tumaet-ui`. Declare application layer order before stylesheet imports; replace references to `tumaet-ui-theme`. Theme aliases and nested scopes follow the [theming contract](docs/theming.mdx).
+- Ship modular ESM and validate the packed artifact with fresh consumers. React and React DOM remain peers; Base UI is a runtime dependency.
+- Keep Input and Textarea native. Field parts use explicit label, ID and ARIA associations; validation state and errors belong to the caller.
+- Replace implicit FormField wiring and `controlId` with one render-function child. Spread its associations onto the intended labelable control:
+
+```tsx
+<FormField label="Title" invalid={invalid} error={error}>
+  {(control) => <Input {...control} name="title" required />}
+</FormField>
+```
+
+- Remove the public FormField context hooks. Use flat Field parts for custom IDs or groups, with explicit `htmlFor`, `aria-labelledby`, `aria-describedby` and `aria-invalid` as appropriate.
+- Release detached object refs and honor React callback-ref cleanup in composite controls.
+
 ## 0.1.0
 
 First release. **The API may change in any 0.x release.**

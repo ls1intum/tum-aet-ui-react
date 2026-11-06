@@ -1,100 +1,47 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useId,
-  useLayoutEffect,
-  useMemo,
-  useState,
-  type HTMLAttributes,
-  type MouseEvent,
-  type ReactNode,
-  type Ref,
-} from 'react';
+import { useId, type ComponentPropsWithRef, type ReactNode } from 'react';
 import { cx } from '../../internal/cx';
 
-/** What a FormField tells the control it wraps. */
-export interface FormFieldContextValue {
-  /** Id of the field's `<label for>` target. A control without an id of its own adopts it. */
-  controlId: string;
-  /** The explicit `controlId` set on the field. It wins over an id the control brought itself. */
-  explicitControlId?: string;
-  /** Id of the `<label>`. Controls whose focusable element is not labelable (e.g. `role="combobox"` on a div) use it for `aria-labelledby`. */
-  labelId: string;
-  /** Ids of the text currently describing the field (the error while invalid, otherwise the hint). */
-  describedBy?: string;
-  invalid: boolean;
-  required: boolean;
-  /** Reports an id the control brought with it, so the label targets the real element. */
-  adoptControlId: (id: string) => void;
+export type FieldProps = ComponentPropsWithRef<'div'>;
+export type FieldLabelProps = ComponentPropsWithRef<'label'>;
+export type FieldDescriptionProps = ComponentPropsWithRef<'p'>;
+export type FieldErrorProps = ComponentPropsWithRef<'div'>;
+
+/** Presentation only. Associate the label, control and descriptions explicitly. */
+export function Field({ className, ...props }: FieldProps) {
+  return <div {...props} className={cx('tumaet-ui-form-field', className)} />;
 }
 
-const FormFieldContext = createContext<FormFieldContextValue | null>(null);
-
-/** The enclosing FormField, or `null` outside one. */
-export function useFormFieldContext(): FormFieldContextValue | null {
-  return useContext(FormFieldContext);
+export function FieldLabel({ className, htmlFor, ...props }: FieldLabelProps) {
+  return <label {...props} htmlFor={htmlFor} className={cx('tumaet-ui-form-field-label', className)} />;
 }
 
-export interface FormFieldControlOptions {
-  /** An id the control brought with it. */
-  id?: string;
-  'aria-describedby'?: string;
-  'aria-invalid'?: boolean | 'true' | 'false' | 'grammar' | 'spelling';
-  /** Marks the control invalid in addition to an invalid enclosing field. */
-  invalid?: boolean;
+export function FieldDescription({ className, ...props }: FieldDescriptionProps) {
+  return <p {...props} className={cx('tumaet-ui-form-field-hint', className)} />;
+}
+
+/** Render when the caller has an error; native validity is never inferred. */
+export function FieldError({ className, role = 'alert', ...props }: FieldErrorProps) {
+  return <div {...props} role={role} className={cx('tumaet-ui-form-field-error', className)} />;
 }
 
 export interface FormFieldControlProps {
   id: string;
   'aria-describedby': string | undefined;
-  'aria-invalid': boolean | 'true' | 'false' | 'grammar' | 'spelling' | undefined;
-  invalid: boolean;
+  'aria-invalid': true | undefined;
 }
 
-/**
- * For controls: resolves id, `aria-describedby` and `aria-invalid` from the enclosing FormField and the control's own props.
- * Id order: explicit field `controlId`, the control's own id, the field's generated id, a generated fallback.
- * `aria-invalid` is omitted rather than `"false"` while valid.
- */
-export function useFormFieldControl(options: FormFieldControlOptions = {}): FormFieldControlProps {
-  const field = useFormFieldContext();
-  const fallbackId = useId();
-  const own = options.id;
-  const adopt = field?.adoptControlId;
-  useLayoutEffect(() => {
-    if (own !== undefined && own !== '') adopt?.(own);
-  }, [own, adopt]);
-  const id = field?.explicitControlId ?? own ?? field?.controlId ?? fallbackId;
-  const describedBy = [options['aria-describedby'], field?.describedBy].filter(Boolean).join(' ') || undefined;
-  const invalid = Boolean(options.invalid) || (field?.invalid ?? false);
-  const ariaInvalid = options['aria-invalid'] ?? (invalid ? true : undefined);
-  return {
-    id,
-    'aria-describedby': describedBy,
-    'aria-invalid': ariaInvalid,
-    invalid: invalid || ariaInvalid === true || ariaInvalid === 'true',
-  };
-}
-
-/** Elements the browser focuses itself when their `<label for>` is clicked. */
-const LABELABLE = 'button, input, meter, output, progress, select, textarea';
-
-export interface FormFieldProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
-  /** Label content. */
+export interface FormFieldProps extends Omit<FieldProps, 'children'> {
   label?: ReactNode;
-  /** Id of the control. Defaults to a generated id, which the control adopts unless it brings its own. */
-  controlId?: string;
-  /** Renders a decorative required marker. The control still needs its own `required`. */
+  /** Decorative marker only; set `required` on the control for native validation. */
   required?: boolean;
-  /** Helper text shown while the field is valid. */
+  /** Helper text shown while valid. */
   hint?: ReactNode;
-  /** Shows the error and marks the control invalid. */
+  /** Caller-owned validation state. */
   invalid?: boolean;
-  /** Error text, shown while `invalid`. */
+  /** Error text shown while invalid. */
   error?: ReactNode;
-  children?: ReactNode;
-  ref?: Ref<HTMLDivElement>;
+  /** Spread the supplied native associations onto one labelable control. */
+  children: (props: FormFieldControlProps) => ReactNode;
 }
 
 const isPresent = (node: ReactNode) =>
@@ -105,82 +52,47 @@ const isPresent = (node: ReactNode) =>
   !(typeof node === 'string' && node.trim() === '');
 
 /**
- * Labelled wrapper around one control. It owns the label, the required marker, hint and error text and wires
- * `for`, `aria-describedby` and `aria-invalid` to the control through context.
+ * Concise composition for one native labelable control. For custom IDs, multiple
+ * controls or nonlabelable widget roots, compose the flat Field parts explicitly.
  */
 export function FormField({
   label,
-  controlId,
   required = false,
   hint,
   invalid = false,
   error,
   className,
   children,
-  onClick,
   ...rest
 }: FormFieldProps) {
   const base = useId();
-  const [adopted, setAdopted] = useState<string>();
-  const generatedId = `${base}-control`;
-  const labelId = `${base}-label`;
+  const controlId = `${base}-control`;
   const hintId = `${base}-hint`;
   const errorId = `${base}-error`;
-  const targetId = controlId ?? adopted ?? generatedId;
-  const showHint = isPresent(hint) && !invalid;
-  let describedBy: string | undefined;
-  if (invalid) {
-    describedBy = errorId;
-  } else if (showHint) {
-    describedBy = hintId;
-  }
-  const adoptControlId = useCallback((id: string) => setAdopted(id), []);
-
-  const value = useMemo<FormFieldContextValue>(
-    () => ({
-      controlId: targetId,
-      explicitControlId: controlId,
-      labelId,
-      describedBy,
-      invalid,
-      required,
-      adoptControlId,
-    }),
-    [targetId, controlId, labelId, describedBy, invalid, required, adoptControlId],
-  );
-
-  /** Clicking the label focuses a control the browser would not focus itself (a focusable div, for example). */
-  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
-    onClick?.(event);
-    if (!(event.target instanceof Element) || event.target.closest('.tumaet-ui-form-field-label') === null) return;
-    const target = document.getElementById(targetId);
-    if (target !== null && !target.matches(LABELABLE)) target.focus();
-  };
-
+  const showHint = !invalid && isPresent(hint);
+  const showError = invalid && isPresent(error);
+  const describedBy = showError ? errorId : undefined;
   return (
-    <FormFieldContext value={value}>
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- delegates clicks on the label (which the browser makes keyboard-operable); the wrapper itself is not interactive */}
-      <div {...rest} className={cx('tumaet-ui-form-field', className)} onClick={handleClick}>
-        {label !== undefined && label !== null && label !== false && label !== '' && (
-          <label id={labelId} htmlFor={targetId} className="tumaet-ui-form-field-label">
-            {label}
-            {required ? (
-              <span className="tumaet-ui-form-field-required" aria-hidden="true">
-                *
-              </span>
-            ) : null}
-          </label>
-        )}
-        <div className="tumaet-ui-form-field-control">{children}</div>
-        {showHint ? (
-          <span id={hintId} className="tumaet-ui-form-field-hint">
-            {hint}
-          </span>
-        ) : null}
-        <div id={errorId} className="tumaet-ui-form-field-error" role="alert" hidden={!invalid}>
-          {error}
-        </div>
+    <Field {...rest} data-invalid={invalid || undefined} className={className}>
+      {isPresent(label) ? (
+        <FieldLabel htmlFor={controlId}>
+          {label}
+          {required ? (
+            <span className="tumaet-ui-form-field-required" aria-hidden="true">
+              *
+            </span>
+          ) : null}
+        </FieldLabel>
+      ) : null}
+      <div className="tumaet-ui-form-field-control">
+        {children({
+          id: controlId,
+          'aria-describedby': showHint ? hintId : describedBy,
+          'aria-invalid': invalid || undefined,
+        })}
       </div>
-    </FormFieldContext>
+      {showHint ? <FieldDescription id={hintId}>{hint}</FieldDescription> : null}
+      {showError ? <FieldError id={errorId}>{error}</FieldError> : null}
+    </Field>
   );
 }

@@ -10,7 +10,6 @@ import {
 } from 'react';
 import { cx } from '../../internal/cx';
 import { useControllable } from '../../internal/use-controllable';
-import { useFormFieldControl } from '../form-field/form-field';
 
 type RadioValue = string | number;
 
@@ -82,7 +81,7 @@ export interface RadioButtonProps extends Omit<
   defaultChecked?: boolean;
   /** Called when this radio becomes selected. */
   onChange?: (value: RadioValue | undefined, event: ChangeEvent<HTMLInputElement>) => void;
-  /** Marks the radio invalid (also set by an enclosing invalid FormField). */
+  /** Marks the radio invalid (set aria-invalid for external errors). */
   invalid?: boolean;
   /** Class of the wrapper element. */
   className?: string;
@@ -109,7 +108,9 @@ export function RadioButton({
   ...rest
 }: RadioButtonProps) {
   const group = useContext(RadioGroupContext);
-  const control = useFormFieldControl({ id, invalid, 'aria-describedby': describedBy, 'aria-invalid': ariaInvalid });
+  const generatedId = useId();
+  const controlId = id ?? generatedId;
+  const isInvalid = invalid === true || ariaInvalid === true || ariaInvalid === 'true';
   const isChecked = group ? value !== undefined && group.value === value : checked;
   const isDisabled = disabled === true || group?.disabled === true;
 
@@ -119,17 +120,16 @@ export function RadioButton({
       style={style}
       data-checked={isChecked === true ? true : undefined}
       data-disabled={isDisabled || undefined}
-      data-invalid={control.invalid || undefined}
+      data-invalid={isInvalid || undefined}
     >
       {/* eslint-disable-next-line jsx-a11y/role-supports-aria-props -- the field's invalid state is deliberately exposed on the native radio */}
       <input
         {...rest}
         ref={ref}
         type="radio"
-        // Several radios share a group, so they must not all adopt the field's single control id.
-        id={group ? (id ?? undefined) : control.id}
-        aria-describedby={control['aria-describedby']}
-        aria-invalid={control['aria-invalid']}
+        id={controlId}
+        aria-describedby={describedBy}
+        aria-invalid={ariaInvalid ?? (invalid === true ? true : undefined)}
         className="tumaet-ui-radio-button-input"
         name={group?.name ?? name}
         value={value === undefined ? undefined : String(value)}

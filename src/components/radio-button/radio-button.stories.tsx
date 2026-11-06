@@ -137,7 +137,7 @@ export const Disabled: Story = {
 export const InFormField: Story = {
   render: () => (
     <FormField label="Format" hint="Applies to all courses">
-      <RadioButton name="format" value="pdf" defaultChecked />
+      {(field) => <RadioButton {...field} name="format" value="pdf" defaultChecked />}
     </FormField>
   ),
 };
