@@ -1,10 +1,16 @@
 .tumaet-ui-radio-group {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--tumaet-ui-spacing) * 2);
+  gap: calc(var(--tumaet-ui-spacing, 0.25rem) * 2);
+
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .tumaet-ui-radio-button {
+  cursor: pointer;
   user-select: none;
 
   position: relative;
@@ -14,28 +20,16 @@
 
   width: calc(var(--tumaet-ui-spacing, 0.25rem) * 5);
   height: calc(var(--tumaet-ui-spacing, 0.25rem) * 5);
-
-  vertical-align: bottom;
-}
-
-.tumaet-ui-radio-button-input {
-  cursor: pointer;
-
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-
-  width: 100%;
-  height: 100%;
-  margin: 0;
   padding: 0;
-  border-radius: 50%;
+  border: 0;
 
-  appearance: none;
-  opacity: 0;
+  font: inherit;
+  vertical-align: bottom;
+
+  background: transparent;
 }
 
-.tumaet-ui-radio-button-input:disabled {
+.tumaet-ui-radio-button:has(:disabled) {
   cursor: default;
 }
 
@@ -85,31 +79,25 @@
   background-color: var(--tumaet-ui-primary-contrast-color);
 }
 
-/* :checked rather than state, so uncontrolled radios that the browser keeps exclusive are styled too. :where keeps the
-   specificity low enough for the invalid and disabled rules below. */
-.tumaet-ui-radio-button:where(:has(> .tumaet-ui-radio-button-input:checked)) .tumaet-ui-radio-button-box {
+.tumaet-ui-radio-button-input:checked + .tumaet-ui-radio-button-box {
   border-color: var(--tumaet-ui-primary-color);
   background-color: var(--tumaet-ui-primary-color);
 }
 
-.tumaet-ui-radio-button:where(:has(> .tumaet-ui-radio-button-input:checked)) .tumaet-ui-radio-button-icon {
-  visibility: visible;
-}
-
-.tumaet-ui-radio-button[data-invalid] .tumaet-ui-radio-button-box {
+.tumaet-ui-radio-button-input[aria-invalid='true'] + .tumaet-ui-radio-button-box {
   border-color: var(--tumaet-ui-state-danger);
 }
 
-.tumaet-ui-radio-button[data-disabled] .tumaet-ui-radio-button-box {
+.tumaet-ui-radio-button:has(:disabled) .tumaet-ui-radio-button-box {
   border-color: var(--tumaet-ui-control-border-color);
   background-color: var(--tumaet-ui-disabled-background);
 }
 
-.tumaet-ui-radio-button[data-disabled] .tumaet-ui-radio-button-icon {
+.tumaet-ui-radio-button:has(:disabled) .tumaet-ui-radio-button-icon {
   background-color: var(--tumaet-ui-disabled-color);
 }
 
-.tumaet-ui-radio-button-input:hover:not(:disabled) + .tumaet-ui-radio-button-box::after {
+.tumaet-ui-radio-button:hover:not(:has(:disabled)) .tumaet-ui-radio-button-box::after {
   background-color: color-mix(in srgb, var(--tumaet-ui-text-color) 5%, transparent);
 }
 
@@ -126,12 +114,42 @@
 }
 
 @media (forced-colors: active) {
-  .tumaet-ui-radio-button-input {
-    appearance: auto;
-    opacity: 1;
+  .tumaet-ui-radio-button-icon {
+    background: HighlightText;
   }
 
   .tumaet-ui-radio-button-box {
-    display: none;
+    border-color: ButtonText;
+    forced-color-adjust: none;
+    background: Canvas;
   }
+
+  .tumaet-ui-radio-button-input:checked + .tumaet-ui-radio-button-box {
+    background: Highlight;
+  }
+
+  .tumaet-ui-radio-button:has(:disabled) {
+    cursor: default;
+    color: GrayText;
+  }
+}
+
+.tumaet-ui-radio-button-input:checked + .tumaet-ui-radio-button-box .tumaet-ui-radio-button-icon {
+  visibility: visible;
+}
+
+.tumaet-ui-radio-button-input {
+  cursor: inherit;
+
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+  margin: 0;
+
+  font: inherit;
+
+  opacity: 0;
 }

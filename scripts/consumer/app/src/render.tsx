@@ -5,9 +5,7 @@ import { Button, Card, FormField, Input, Tag } from '@tumaet/ui-react';
 export function render(): string {
   return renderToString(
     <Card>
-      <FormField label="Name">
-        <Input />
-      </FormField>
+      <FormField label="Name">{(control) => <Input {...control} />}</FormField>
       <Tag>Active</Tag>
       <Button variant="solid">Save</Button>
     </Card>,

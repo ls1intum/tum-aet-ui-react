@@ -57,7 +57,7 @@ export interface InputNumberProps extends Omit<
   prefix?: string;
   /** Text after the number. */
   suffix?: string;
-  /** Marks the field invalid (also set by an enclosing invalid FormField). */
+  /** Marks the field invalid. */
   invalid?: boolean;
   /** Expands the field to the available width. */
   fluid?: boolean;

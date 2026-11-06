@@ -3,3 +3,6 @@ dist
 .DS_Store
 storybook-static*
 build
+.vitest
+
+tests/browser/__traces__/

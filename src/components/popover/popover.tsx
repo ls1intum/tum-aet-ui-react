@@ -1,153 +1,106 @@
-import {
-  cloneElement,
-  useCallback,
-  useId,
-  useLayoutEffect,
-  useRef,
-  type HTMLAttributes,
-  type KeyboardEvent,
-  type ReactElement,
-  type ReactNode,
-  type Ref,
-  type RefObject,
-} from 'react';
+import { Popover as BasePopover } from '@base-ui/react/popover';
 import { cx } from '../../internal/cx';
-import { Floating, type Placement } from '../../internal/floating';
-import { mergeRefs } from '../../internal/merge-refs';
-import { useControllable } from '../../internal/use-controllable';
 
 export type PopoverPadding = 'default' | 'none';
+export type PopoverProps<Payload = unknown> = BasePopover.Root.Props<Payload>;
 
-type TriggerProps = HTMLAttributes<HTMLElement> & { ref?: Ref<HTMLElement> };
-
-export interface PopoverProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
-  /** The element that toggles the popover, usually a `Button`. It must accept a ref and DOM props. */
-  trigger: ReactElement<TriggerProps>;
-  /** Controlled open state. */
-  open?: boolean;
-  defaultOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  placement?: Placement;
-  padding?: PopoverPadding;
-  /** Accessible name of the `role="dialog"` panel. Required: a dialog must have a name. */
-  'aria-label': string;
-  children?: ReactNode;
-  ref?: Ref<HTMLDivElement>;
+export function Popover<Payload = unknown>(props: PopoverProps<Payload>) {
+  return <BasePopover.Root {...props} />;
 }
 
-const TABBABLE =
-  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), summary';
-
-function tabbables(root: HTMLElement): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>(TABBABLE)).filter((el) => !el.closest('[hidden], [inert]'));
-}
-
-/** Callback ref that fills the consumer's trigger ref and our own anchor ref. Stable while `ref` is. */
-function useMergedRef<T>(ref: Ref<T> | undefined, own: RefObject<T | null>) {
-  return useCallback((node: T | null) => mergeRefs<T>(ref, own)(node), [ref, own]);
-}
-
-/**
- * Anchored panel for rich or interactive content, toggled by its trigger. Use `Tooltip` for a short, non-interactive hint
- * and `Menu` for a list of commands. Focus moves into the panel on open, is kept inside while open and returns to the
- * trigger on close.
- */
-export function Popover({
-  trigger,
-  open,
-  defaultOpen = false,
-  onOpenChange,
-  placement = 'bottom',
-  padding = 'default',
-  className,
-  children,
-  ref,
-  ...rest
-}: PopoverProps) {
-  const [isOpen, setOpen] = useControllable(open, defaultOpen, onOpenChange);
-  const panelId = useId();
-  const anchor = useRef<HTMLElement | null>(null);
-  const triggerRef = trigger.props.ref;
-  const mergedTriggerRef = useMergedRef(triggerRef, anchor);
-
-  const close = () => {
-    setOpen(false);
-    anchor.current?.focus();
-  };
-
-  // Stable, so it only runs when the panel mounts. The panel is made visible by the style below, so it can take focus
-  // before Floating has measured it (it is positioned before the first paint either way).
-  // Floating passes a fresh ref callback on every render, so remember which panel element already took focus.
-  const focusedPanel = useRef<HTMLDivElement | null>(null);
-  const focusPanel = useCallback((node: HTMLDivElement | null) => {
-    if (!node || node === focusedPanel.current) return;
-    focusedPanel.current = node;
-    (tabbables(node)[0] ?? node).focus({ preventScroll: true });
-  }, []);
-
-  // Closed from outside (the parent sets `open` to false, a button inside the panel closes it): the panel that held focus
-  // is gone and focus fell back to the body, so give it back to the trigger. A focus that already went somewhere else stays.
-  useLayoutEffect(() => {
-    if (!isOpen) return;
-    return () => {
-      const active = document.activeElement;
-      // The cleanup must reach the trigger that is mounted when the popover closes, not the one from when it opened.
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally reads the latest trigger element
-      if (!active || active === document.body) anchor.current?.focus();
-    };
-  }, [isOpen]);
-
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    rest.onKeyDown?.(event);
-    if (event.key !== 'Tab') return;
-    const items = tabbables(event.currentTarget);
-    const first = items[0];
-    const last = items[items.length - 1];
-    if (!first || !last) {
-      event.preventDefault();
-      return;
-    }
-    const active = document.activeElement;
-    if (event.shiftKey && (active === first || active === event.currentTarget)) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && active === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
-
+export type PopoverTriggerProps<Payload = unknown> = BasePopover.Trigger.Props<Payload>;
+export function PopoverTrigger<Payload = unknown>({ className, ...props }: PopoverTriggerProps<Payload>) {
   return (
-    <>
-      {cloneElement(trigger, {
-        ref: mergedTriggerRef,
-        'aria-haspopup': 'dialog',
-        'aria-expanded': isOpen,
-        'aria-controls': isOpen ? panelId : undefined,
-        onClick: (event: React.MouseEvent<HTMLElement>) => {
-          trigger.props.onClick?.(event);
-          if (!event.defaultPrevented) setOpen(!isOpen);
-        },
-      })}
-      <Floating
-        {...rest}
-        ref={mergeRefs<HTMLDivElement>(ref, focusPanel)}
-        anchor={anchor}
-        open={isOpen}
-        placement={placement}
-        offset={8}
-        onDismiss={close}
-        id={panelId}
-        role="dialog"
-        aria-modal="true"
-        tabIndex={-1}
-        style={{ visibility: 'visible', ...rest.style }}
-        className={cx('tumaet-ui-popover-panel', className)}
-        data-padding={padding}
-        onKeyDown={onKeyDown}
-      >
-        {children}
-      </Floating>
-    </>
+    <BasePopover.Trigger
+      {...props}
+      className={(state) =>
+        cx('tumaet-ui-popover-trigger', typeof className === 'function' ? className(state) : className)
+      }
+    />
+  );
+}
+
+export type PopoverPortalProps = BasePopover.Portal.Props;
+export function PopoverPortal({ className, ...props }: PopoverPortalProps) {
+  return (
+    <BasePopover.Portal
+      {...props}
+      className={(state) =>
+        cx('tumaet-ui-popover-portal', typeof className === 'function' ? className(state) : className)
+      }
+    />
+  );
+}
+
+export type PopoverBackdropProps = BasePopover.Backdrop.Props;
+export function PopoverBackdrop({ className, ...props }: PopoverBackdropProps) {
+  return (
+    <BasePopover.Backdrop
+      {...props}
+      className={(state) =>
+        cx('tumaet-ui-popover-backdrop', typeof className === 'function' ? className(state) : className)
+      }
+    />
+  );
+}
+
+export type PopoverPositionerProps = BasePopover.Positioner.Props;
+export function PopoverPositioner({ className, ...props }: PopoverPositionerProps) {
+  return (
+    <BasePopover.Positioner
+      {...props}
+      className={(state) =>
+        cx('tumaet-ui-popover-positioner', typeof className === 'function' ? className(state) : className)
+      }
+    />
+  );
+}
+
+export type PopoverPopupProps = BasePopover.Popup.Props & { padding?: PopoverPadding };
+export function PopoverPopup({ className, padding = 'default', ...props }: PopoverPopupProps) {
+  return (
+    <BasePopover.Popup
+      {...props}
+      data-padding={padding}
+      className={(state) =>
+        cx('tumaet-ui-popover-panel', typeof className === 'function' ? className(state) : className)
+      }
+    />
+  );
+}
+
+export type PopoverTitleProps = BasePopover.Title.Props;
+export function PopoverTitle({ className, ...props }: PopoverTitleProps) {
+  return (
+    <BasePopover.Title
+      {...props}
+      className={(state) =>
+        cx('tumaet-ui-popover-title', typeof className === 'function' ? className(state) : className)
+      }
+    />
+  );
+}
+
+export type PopoverDescriptionProps = BasePopover.Description.Props;
+export function PopoverDescription({ className, ...props }: PopoverDescriptionProps) {
+  return (
+    <BasePopover.Description
+      {...props}
+      className={(state) =>
+        cx('tumaet-ui-popover-description', typeof className === 'function' ? className(state) : className)
+      }
+    />
+  );
+}
+
+export type PopoverCloseProps = BasePopover.Close.Props;
+export function PopoverClose({ className, ...props }: PopoverCloseProps) {
+  return (
+    <BasePopover.Close
+      {...props}
+      className={(state) =>
+        cx('tumaet-ui-popover-close', typeof className === 'function' ? className(state) : className)
+      }
+    />
   );
 }

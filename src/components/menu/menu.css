@@ -1,3 +1,7 @@
+.tumaet-ui-menu-positioner {
+  z-index: 1100;
+}
+
 .tumaet-ui-menu {
   overflow: auto;
   display: flex;
@@ -5,8 +9,11 @@
 
   box-sizing: border-box;
   min-width: 12rem;
-  max-height: 90dvh;
-  padding: var(--tumaet-ui-spacing) 0;
+  /* stylelint-disable custom-property-pattern -- Base UI supplies the available viewport dimensions. */
+  max-width: var(--available-width);
+  max-height: var(--available-height);
+  /* stylelint-enable custom-property-pattern */
+  padding: var(--tumaet-ui-spacing);
   border-radius: var(--tumaet-ui-radius-md);
 
   color: var(--tumaet-ui-text-color);
@@ -15,7 +22,8 @@
 }
 
 .tumaet-ui-menu:focus-visible {
-  outline: none;
+  outline: 2px solid var(--tumaet-ui-focus-color);
+  outline-offset: 2px;
 }
 
 .tumaet-ui-menu-item {
@@ -39,19 +47,22 @@
   background: transparent;
 }
 
-.tumaet-ui-menu-item:hover {
+.tumaet-ui-menu-item:not([data-disabled]):hover {
   color: var(--tumaet-ui-text-hover-color);
   background: var(--tumaet-ui-hover-background);
 }
 
-.tumaet-ui-menu-item:focus-visible {
+.tumaet-ui-menu-item[data-highlighted] {
   color: var(--tumaet-ui-highlight-color);
   background: var(--tumaet-ui-highlight-focus-background);
-  outline: none;
 }
 
-.tumaet-ui-menu-item[aria-disabled='true'] {
-  pointer-events: none;
+.tumaet-ui-menu-item:focus-visible {
+  outline: 2px solid var(--tumaet-ui-focus-color);
+  outline-offset: 2px;
+}
+
+.tumaet-ui-menu-item[data-disabled] {
   cursor: default;
   color: var(--tumaet-ui-disabled-color);
 }

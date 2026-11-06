@@ -4,7 +4,6 @@ import { SearchIcon, XIcon } from '../../internal/icons';
 import { useTranslate } from '../../internal/i18n';
 import { mergeRefs } from '../../internal/merge-refs';
 import { useControllable } from '../../internal/use-controllable';
-import { useFormFieldContext } from '../form-field/form-field';
 import { Input, type InputProps } from '../input/input';
 
 export interface SearchFieldProps extends Omit<
@@ -17,7 +16,7 @@ export interface SearchFieldProps extends Omit<
   defaultValue?: string;
   /** Called on every keystroke and on clear with the new term. */
   onChange?: (value: string) => void;
-  /** Defaults to the translated "Search". Also the accessible name unless `aria-label` is given. */
+  /** Defaults to the translated "Search". Also the accessible name when no id or explicit ARIA label is supplied. */
   placeholder?: string;
   /** Class of the wrapper element. */
   className?: string;
@@ -34,6 +33,7 @@ export function SearchField({
   defaultValue = '',
   onChange,
   placeholder,
+  id,
   'aria-label': ariaLabel,
   'aria-labelledby': labelledBy,
   className,
@@ -44,7 +44,6 @@ export function SearchField({
   ...rest
 }: SearchFieldProps) {
   const t = useTranslate();
-  const field = useFormFieldContext();
   const [term, setTerm] = useControllable<string>(value, defaultValue, onChange);
   const inputRef = useRef<HTMLInputElement>(null);
   const placeholderText = placeholder ?? t('tumAetUi.searchField.placeholder');
@@ -56,15 +55,18 @@ export function SearchField({
       </span>
       <Input
         {...rest}
+        id={id}
         ref={mergeRefs(inputRef, ref)}
         type="search"
         className={inputClassName}
         value={term}
         disabled={disabled}
         placeholder={placeholderText}
-        // Inside a FormField the visible label names the input; the placeholder would override it otherwise.
+        // With an explicit id or aria-labelledby, the caller supplies the label association.
         aria-label={
-          (labelledBy !== undefined && labelledBy !== '') || field ? ariaLabel : (ariaLabel ?? placeholderText)
+          (labelledBy !== undefined && labelledBy !== '') || id !== undefined
+            ? ariaLabel
+            : (ariaLabel ?? placeholderText)
         }
         aria-labelledby={labelledBy}
         onChange={(event: ChangeEvent<HTMLInputElement>) => setTerm(event.target.value)}

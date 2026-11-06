@@ -1,26 +1,20 @@
-/* The native <dialog> element is only the top-layer host: the visible surface is .tumaet-ui-dialog. */
-.tumaet-ui-dialog-modal {
-  overflow: visible;
-
-  max-width: none;
-  max-height: none;
-  padding: 0;
-  border: 0;
-
-  color: var(--tumaet-ui-text-color);
-
-  background: transparent;
+.tumaet-ui-dialog-portal {
+  position: relative;
+  z-index: 1100;
 }
 
-.tumaet-ui-dialog-modal:focus-visible {
-  outline: none;
-}
-
-.tumaet-ui-dialog-modal::backdrop {
+.tumaet-ui-dialog-backdrop {
+  position: fixed;
+  inset: 0;
   background: rgb(0 0 0 / 32%);
 }
 
 .tumaet-ui-dialog {
+  position: fixed;
+  inset-block-start: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -73,7 +67,7 @@
   line-height: var(--tumaet-ui-line-height-xl);
 }
 
-.tumaet-ui-dialog-close {
+.tumaet-ui-dialog-close[data-icon-only] {
   cursor: pointer;
 
   display: inline-flex;
@@ -97,10 +91,12 @@
   transition: background-color 0.15s ease;
 }
 
-.tumaet-ui-dialog-close:hover {
+.tumaet-ui-dialog-close[data-icon-only]:hover {
   background: var(--tumaet-ui-hover-background);
 }
 
+.tumaet-ui-dialog-title:focus-visible,
+.tumaet-ui-dialog-trigger:focus-visible,
 .tumaet-ui-dialog-close:focus-visible {
   outline: 2px solid var(--tumaet-ui-focus-color);
   outline-offset: 2px;
@@ -119,4 +115,20 @@
   justify-content: flex-end;
 
   padding: 0 calc(var(--tumaet-ui-spacing) * 4) calc(var(--tumaet-ui-spacing) * 4);
+}
+
+.tumaet-ui-dialog:focus-visible {
+  outline: 2px solid var(--tumaet-ui-focus-color);
+  outline-offset: 2px;
+}
+
+.tumaet-ui-dialog-title,
+.tumaet-ui-dialog-description {
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tumaet-ui-dialog-close {
+    transition: none;
+  }
 }

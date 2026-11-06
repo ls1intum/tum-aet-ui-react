@@ -1,5 +1,8 @@
-:root,
-[data-theme='light'] {
+/* Light remains the default. A valid data-theme wins over aliases on the same
+   element; .light wins over .dark when both aliases are present. Keep selectors
+   equally specific so an explicit theme on :root can replace its defaults. */
+/* stylelint-disable-next-line selector-class-pattern -- Public .light/.dark theme aliases intentionally have no library prefix. */
+:where(:root, [data-theme='light'], .light:not([data-theme='dark'])) {
   --tumaet-ui-spacing: 0.25rem;
   --tumaet-ui-splitter-divider-size: 6px;
   --tumaet-ui-font-family:
@@ -63,7 +66,8 @@
   color-scheme: light;
 }
 
-[data-theme='dark'] {
+/* stylelint-disable-next-line selector-class-pattern -- Public .light/.dark theme aliases intentionally have no library prefix. */
+:where([data-theme='dark'], .dark:not(.light, [data-theme='light'])) {
   --tumaet-ui-primary-color: #65a1d6;
   --tumaet-ui-primary-contrast-color: #16191d;
   --tumaet-ui-accent-color: #7fb1dc;

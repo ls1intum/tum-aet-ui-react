@@ -1,20 +1,28 @@
 import {
   useEffect,
+  useId,
+  useMemo,
   useRef,
   useState,
   type FocusEventHandler,
   type HTMLAttributes,
-  type KeyboardEvent,
   type Ref,
 } from 'react';
+import { Popover } from '@base-ui/react/popover';
 import { cx } from '../../internal/cx';
-import { Floating } from '../../internal/floating';
 import { useTranslate } from '../../internal/i18n';
 import { CalendarIcon, XIcon } from '../../internal/icons';
 import { mergeRefs } from '../../internal/merge-refs';
 import { useControllable } from '../../internal/use-controllable';
 import { Button } from '../button/button';
-import { Tooltip } from '../tooltip/tooltip';
+import {
+  Tooltip,
+  TooltipArrow,
+  TooltipPopup,
+  TooltipPortal,
+  TooltipPositioner,
+  TooltipTrigger,
+} from '../tooltip/tooltip';
 import { Calendar } from './calendar';
 import {
   combineDateAndTime,
@@ -29,7 +37,6 @@ import {
 } from './date-picker-utils';
 import { ClockIcon, GlobeIcon } from './icons';
 import { TimeControls } from './time-controls';
-import { useFormFieldControl } from '../form-field/form-field';
 
 export interface DatePickerProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -40,7 +47,7 @@ export interface DatePickerProps extends Omit<
   /** The initial value of an uncontrolled picker. */
   defaultValue?: Date | null;
   /** Called with the new value, or `null` when the field is emptied. */
-  onChange?: (value: Date | null) => void;
+  onValueChange?: (value: Date | null) => void;
   /** Id of the text field. The label's `htmlFor` points here. */
   id?: string;
   /** Marks the field invalid for an error the consumer explains, such as an end before the start. */
@@ -75,14 +82,18 @@ export interface DatePickerProps extends Omit<
   placeholder?: string;
   /** Ref of the text field, for `focus()`. `ref` points at the root element. */
   inputRef?: Ref<HTMLInputElement>;
+  /** Destination for the popup and time-zone tooltip. Place the host within the intended theme, outside clipping containers. */
+  portalContainer?: Popover.Portal.Props['container'];
   ref?: Ref<HTMLDivElement>;
 }
 
-/** Date and time field with typed input and an accessible calendar dialog. Values are `Date`s in the local time zone. */
+/** Local date/time editor with a nonmodal calendar popup. Done and Escape return focus to the text field.
+ * `defaultValue` initializes domain state; native form submission and reset are not exposed. Controlled reset is caller-owned.
+ */
 export function DatePicker({
   value: valueProp,
   defaultValue = null,
-  onChange,
+  onValueChange,
   id: idProp,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
@@ -105,18 +116,17 @@ export function DatePicker({
   placeholder,
   inputRef,
   className,
-  onKeyDown,
+  portalContainer,
   ref,
   ...rest
 }: DatePickerProps) {
   const translate = useTranslate();
-  const formField = useFormFieldControl({ id: idProp, 'aria-describedby': ownDescribedBy, 'aria-invalid': ownInvalid });
-  const ariaDescribedBy = formField['aria-describedby'];
-  const ariaInvalid = formField['aria-invalid'];
-  const id = idProp ?? formField.id;
+  const generatedId = useId();
+  const id = idProp ?? generatedId;
   const panelId = `${id}-dialog`;
+  const triggerId = `${id}-trigger`;
   const errorId = `${id}-error`;
-  const [value, setValue] = useControllable<Date | null>(valueProp, defaultValue, onChange);
+  const [value, setValue] = useControllable<Date | null>(valueProp, defaultValue, onValueChange);
   const valueKey = value ? formatDisplay(value, timeOnly, dateOnly) : '';
 
   // Invalid text stays visible without touching the value. It is keyed by the displayed value, so an equal-but-new Date does not wipe it,
@@ -142,9 +152,9 @@ export function DatePicker({
   const isOpen = isOpenState && !disabled && !inline;
   const field = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement | null>(null);
+  const mergedInputRef = useMemo(() => mergeRefs(input, inputRef), [inputRef]);
   const hourInput = useRef<HTMLInputElement | null>(null);
-  const panel = useRef<HTMLDivElement | null>(null);
-  const restoreFocus = useRef<HTMLElement | null>(null);
+  const calendarRoot = useRef<HTMLDivElement | null>(null);
 
   const reportedValidity = useRef(true);
   const validityCallback = useRef(onInputValidityChange);
@@ -158,11 +168,11 @@ export function DatePicker({
   }, [textValid]);
 
   const ownLabel = ariaLabelledBy === undefined || ariaLabelledBy === '' ? ariaLabel : undefined;
-  const externallyInvalid = ariaInvalid === true || ariaInvalid === 'true';
+  const externallyInvalid = ownInvalid === true || ownInvalid === 'true';
   const showTextError = !textValid && (!validateOnBlur || !editing);
   const showError = externallyInvalid || showTextError;
   const showMessage = !hideValidationMessage && showTextError;
-  const describedBy = [showMessage ? errorId : undefined, ariaDescribedBy].filter(Boolean).join(' ') || undefined;
+  const describedBy = [showMessage ? errorId : undefined, ownDescribedBy].filter(Boolean).join(' ') || undefined;
 
   let mode: 'date' | 'time' | 'datetime' = 'datetime';
   if (dateOnly) mode = 'date';
@@ -225,67 +235,20 @@ export function DatePicker({
     input.current?.focus();
   };
 
-  const openPanel = () => {
-    if (isOpen || disabled) return;
-    setActiveMonth(startOfMonth(value ?? startAt ?? nearestAllowedDay(min, max)));
-    restoreFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setIsOpenState(true);
+  const changeOpen = (open: boolean) => {
+    if (open && disabled) return;
+    if (open) setActiveMonth(startOfMonth(value ?? startAt ?? nearestAllowedDay(min, max)));
+    setIsOpenState(open);
   };
 
-  const closePanel = () => {
-    setIsOpenState(false);
-    const target = restoreFocus.current;
-    restoreFocus.current = null;
-    if (disabled) return;
-    if (target?.isConnected === true && target !== document.body) target.focus();
-    else input.current?.focus();
-  };
-
-  const onRootKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    onKeyDown?.(event);
-    // The Escape that closes the calendar must not also close a dialog the field sits in.
-    if (event.key === 'Escape' && isOpen) {
-      event.preventDefault();
-      event.stopPropagation();
-      closePanel();
-    }
-  };
-
-  const onPanelKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'Tab' || !panel.current) return;
-    const items = Array.from(
-      panel.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), [tabindex="0"]'),
-    ).filter((el) => el.tabIndex >= 0);
-    const first = items[0];
-    const last = items.at(-1);
-    if (first === undefined || last === undefined) return;
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
-
-  // Focus moves into the popup when it opens: onto the calendar (which does it itself) or, with no calendar, onto the hour field.
-  useEffect(() => {
-    if (!isOpen || !timeOnly) return;
-    hourInput.current?.focus();
-    const frame = requestAnimationFrame(() => {
-      if (panel.current?.contains(document.activeElement) !== true) hourInput.current?.focus();
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [isOpen, timeOnly]);
-
-  const calendar = (focusOnMount: boolean) => (
+  const calendar = () => (
     <Calendar
       selected={value}
       min={min}
       max={max}
       activeMonth={activeMonth}
       disabled={disabled}
-      focusOnMount={focusOnMount}
+      ref={calendarRoot}
       onDaySelect={selectDay}
       onMonthChange={setActiveMonth}
     />
@@ -306,7 +269,6 @@ export function DatePicker({
     className: cx('tumaet-ui-date-picker', className),
     'data-mode': mode,
     'data-inline': inline || undefined,
-    onKeyDown: onRootKeyDown,
   };
 
   if (inline) {
@@ -317,10 +279,10 @@ export function DatePicker({
           role="group"
           aria-label={ownLabel}
           aria-labelledby={ariaLabelledBy}
-          aria-describedby={ariaDescribedBy}
+          aria-describedby={ownDescribedBy}
           id={id}
         >
-          {!timeOnly && calendar(false)}
+          {!timeOnly && calendar()}
           {!dateOnly && timeControls}
         </div>
       </div>
@@ -331,96 +293,122 @@ export function DatePicker({
   const timeZoneText = translate('tumAetUi.datePicker.timeZoneWarning', { timeZone });
 
   return (
-    <div {...rootProps}>
-      {showTimeZoneWarning ? (
-        <Tooltip content={timeZoneText} describesHost={false}>
-          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the tooltip trigger must be keyboard focusable to reveal the time zone */}
-          <span className="tumaet-ui-date-picker-timezone" tabIndex={0} role="img" aria-label={timeZoneText}>
-            <GlobeIcon />
-            <ClockIcon className="tumaet-ui-date-picker-timezone-clock" />
-          </span>
-        </Tooltip>
-      ) : null}
-      <div ref={field} className="tumaet-ui-date-picker-field">
-        <input
-          ref={mergeRefs(input, inputRef)}
-          id={id}
-          type="text"
-          role="combobox"
-          className="tumaet-ui-date-picker-input"
-          value={inputText}
-          disabled={disabled}
-          placeholder={placeholder ?? translate(placeholderKey)}
-          autoComplete="off"
-          aria-haspopup="dialog"
-          aria-expanded={isOpen}
-          aria-controls={isOpen ? panelId : undefined}
-          aria-invalid={showError}
-          aria-required={ariaRequired}
-          aria-label={ownLabel}
-          aria-labelledby={ariaLabelledBy}
-          aria-describedby={describedBy}
-          onChange={(event) => onInput(event.target.value)}
-          onBlur={onInputBlur}
-          onClick={() => openOnClick && openPanel()}
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowDown' && !event.altKey && !event.ctrlKey && !event.metaKey) {
-              event.preventDefault();
-              openPanel();
-            }
-          }}
-        />
-        {inputText !== '' && !disabled ? (
-          <button
-            type="button"
-            className="tumaet-ui-date-picker-clear"
-            onClick={clear}
-            aria-label={translate('tumAetUi.datePicker.clear')}
-            title={translate('tumAetUi.datePicker.clear')}
-          >
-            <XIcon />
-          </button>
+    <Popover.Root open={isOpen} onOpenChange={changeOpen} triggerId={triggerId} modal={false}>
+      <div {...rootProps}>
+        {showTimeZoneWarning ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focus exposes the time-zone tooltip to keyboard users
+                <span className="tumaet-ui-date-picker-timezone" tabIndex={0} role="img" aria-label={timeZoneText} />
+              }
+            >
+              <GlobeIcon />
+              <ClockIcon className="tumaet-ui-date-picker-timezone-clock" />
+            </TooltipTrigger>
+            <TooltipPortal container={portalContainer}>
+              <TooltipPositioner>
+                <TooltipPopup>
+                  {timeZoneText}
+                  <TooltipArrow />
+                </TooltipPopup>
+              </TooltipPositioner>
+            </TooltipPortal>
+          </Tooltip>
         ) : null}
-        <button
-          type="button"
-          tabIndex={-1}
-          className="tumaet-ui-date-picker-toggle"
-          disabled={disabled}
-          onClick={() => (isOpen ? closePanel() : openPanel())}
-          aria-label={translate(timeOnly && !dateOnly ? 'tumAetUi.datePicker.openTime' : 'tumAetUi.datePicker.open')}
-          aria-haspopup="dialog"
-          aria-expanded={isOpen}
-          aria-controls={isOpen ? panelId : undefined}
-        >
-          {timeOnly && !dateOnly ? <ClockIcon /> : <CalendarIcon />}
-        </button>
-      </div>
-      {showMessage ? (
-        <span id={errorId} role="alert" className="tumaet-ui-date-picker-error">
-          {translate(invalidKey)}
-        </span>
-      ) : null}
-      <Floating
-        anchor={field}
-        open={isOpen}
-        placement="bottom-start"
-        onDismiss={closePanel}
-        ref={panel}
-        id={panelId}
-        role="dialog"
-        aria-modal="true"
-        aria-label={translate(dialogKey)}
-        className="tumaet-ui-date-picker-panel"
-        onKeyDown={onPanelKeyDown}
-      >
-        {!timeOnly && calendar(true)}
-        {!dateOnly && timeControls}
-        <div className="tumaet-ui-date-picker-actions">
-          <Button severity="secondary" variant="text" size="small" onClick={closePanel}>
-            {translate('tumAetUi.datePicker.done')}
-          </Button>
+        <div ref={field} className="tumaet-ui-date-picker-field">
+          <input
+            ref={mergedInputRef}
+            id={id}
+            type="text"
+            role="combobox"
+            className="tumaet-ui-date-picker-input"
+            value={inputText}
+            disabled={disabled}
+            placeholder={placeholder ?? translate(placeholderKey)}
+            autoComplete="off"
+            aria-haspopup="dialog"
+            aria-expanded={isOpen}
+            aria-controls={isOpen ? panelId : undefined}
+            aria-invalid={showError}
+            aria-required={ariaRequired}
+            aria-label={ownLabel}
+            aria-labelledby={ariaLabelledBy}
+            aria-describedby={describedBy}
+            onChange={(event) => onInput(event.target.value)}
+            onBlur={onInputBlur}
+            onClick={(event) => {
+              if (!event.defaultPrevented && openOnClick && !isOpen) changeOpen(true);
+            }}
+            onKeyDown={(event) => {
+              if (
+                !event.defaultPrevented &&
+                event.key === 'ArrowDown' &&
+                !event.altKey &&
+                !event.ctrlKey &&
+                !event.metaKey
+              ) {
+                event.preventDefault();
+                changeOpen(true);
+              }
+            }}
+          />
+          {inputText !== '' && !disabled ? (
+            <button
+              type="button"
+              className="tumaet-ui-date-picker-clear"
+              onClick={clear}
+              aria-label={translate('tumAetUi.datePicker.clear')}
+              title={translate('tumAetUi.datePicker.clear')}
+            >
+              <XIcon />
+            </button>
+          ) : null}
+          <Popover.Trigger
+            id={triggerId}
+            type="button"
+            className="tumaet-ui-date-picker-toggle"
+            disabled={disabled}
+            aria-label={translate(timeOnly && !dateOnly ? 'tumAetUi.datePicker.openTime' : 'tumAetUi.datePicker.open')}
+          >
+            {timeOnly && !dateOnly ? <ClockIcon /> : <CalendarIcon />}
+          </Popover.Trigger>
         </div>
-      </Floating>
-    </div>
+        {showMessage ? (
+          <span id={errorId} role="alert" className="tumaet-ui-date-picker-error">
+            {translate(invalidKey)}
+          </span>
+        ) : null}
+        <Popover.Portal container={portalContainer}>
+          <Popover.Positioner
+            anchor={field}
+            side="bottom"
+            align="start"
+            sideOffset={4}
+            className="tumaet-ui-date-picker-positioner"
+          >
+            <Popover.Popup
+              id={panelId}
+              aria-label={translate(dialogKey)}
+              className="tumaet-ui-date-picker-panel"
+              initialFocus={() =>
+                timeOnly
+                  ? hourInput.current
+                  : (calendarRoot.current?.querySelector<HTMLButtonElement>('button[data-date][tabindex="0"]') ?? true)
+              }
+              finalFocus={input}
+            >
+              {!timeOnly && calendar()}
+              {!dateOnly && timeControls}
+              <div className="tumaet-ui-date-picker-actions">
+                <Popover.Close render={<Button severity="secondary" variant="text" size="small" />}>
+                  {translate('tumAetUi.datePicker.done')}
+                </Popover.Close>
+              </div>
+            </Popover.Popup>
+          </Popover.Positioner>
+        </Popover.Portal>
+      </div>
+    </Popover.Root>
   );
 }
