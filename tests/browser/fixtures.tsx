@@ -17,6 +17,7 @@ import {
   PopoverPositioner,
   PopoverPopup,
   PopoverTitle,
+  PopoverDescription,
   PopoverClose,
 } from '../../src/components/popover';
 import {
@@ -148,6 +149,27 @@ export function DialogFixture({
         <div ref={host} data-testid="overlay-host" />
       </div>
     </DirectionProvider>
+  );
+}
+
+export function NonmodalPopoverFixture() {
+  return (
+    <>
+      <Popover>
+        <PopoverTrigger>Open details</PopoverTrigger>
+        <PopoverPortal>
+          <PopoverPositioner>
+            <PopoverPopup>
+              <PopoverTitle>Details</PopoverTitle>
+              <PopoverDescription>Additional settings.</PopoverDescription>
+              <input aria-label="Nickname" />
+              <PopoverClose>Done</PopoverClose>
+            </PopoverPopup>
+          </PopoverPositioner>
+        </PopoverPortal>
+      </Popover>
+      <button type="button">After details</button>
+    </>
   );
 }
 
