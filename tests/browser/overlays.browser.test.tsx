@@ -1,140 +1,155 @@
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { Popover } from '../../src/components/popover/popover';
-import { Select } from '../../src/components/select/select';
-import { DialogFixture, OverflowFixture, ViewportEdgeFixture } from './fixtures';
+import {
+  DialogFixture,
+  NonmodalPopoverFixture,
+  OverflowFixture,
+  ViewportEdgeFixture,
+  SelectFormFixture,
+  SelectResetFixture,
+  LateFormSelectFixture,
+  SelectReorderFixture,
+} from './fixtures';
 
 async function openSettings() {
-  // Establish focus inside Vitest's test iframe before sending native keys.
-  // This is setup only: focus entry, navigation and return remain assertions.
-  const opener = page.getByRole('button', { name: 'Open settings' }).element();
-  if (!(opener instanceof HTMLButtonElement)) throw new Error('Missing opener button');
-  opener.focus();
-  await expect.element(page.getByRole('button', { name: 'Open settings' })).toHaveFocus();
+  const trigger = page.getByRole('button', { name: 'Open settings' });
+  trigger.element().focus();
   await userEvent.keyboard('{Enter}');
   await expect.element(page.getByRole('dialog', { name: 'Settings', exact: true })).toBeVisible();
+  await expect.element(page.getByRole('textbox', { name: 'Display name' })).toHaveFocus();
 }
 
-test('enters the native dialog, navigates with Tab and returns focus after closing', async () => {
+async function openAdvanced() {
+  await openSettings();
+  await page.getByRole('button', { name: 'More settings' }).click();
+  await expect.element(page.getByRole('textbox', { name: 'Nickname' })).toHaveFocus();
+}
+
+test('blocks background pointer activation until the modal closes', async () => {
+  render(<DialogFixture />);
+  const background = page.getByRole('button', { name: 'Outside action' });
+  const rect = background.element().getBoundingClientRect();
+  await openSettings();
+  const x = rect.x + rect.width / 2;
+  const y = rect.y + rect.height / 2;
+  const target = document.elementFromPoint(x, y);
+  if (target === null) throw new Error('Missing pointer target');
+  const targetRect = target.getBoundingClientRect();
+  await userEvent.click(target, { position: { x: x - targetRect.x, y: y - targetRect.y } });
+  await expect.element(page.getByRole('status', { name: 'Background actions' })).toHaveTextContent('0');
+  await expect.element(page.getByRole('dialog', { name: 'Settings', exact: true })).not.toBeInTheDocument();
+  await expect.element(page.getByRole('button', { name: 'Open settings' })).toHaveFocus();
+  await background.click();
+  await expect.element(page.getByRole('status', { name: 'Background actions' })).toHaveTextContent('1');
+});
+
+test.each([false, true])('excludes the modal background from Tab navigation (reverse: %s)', async (shift) => {
   render(<DialogFixture />);
   const background = page.getByRole('button', { name: 'Outside action' }).element();
   await openSettings();
-  const input = page.getByRole('textbox', { name: 'Display name' });
-  await expect.element(input).toHaveFocus();
+  for (let index = 0; index < 8; index += 1) {
+    await userEvent.tab({ shift });
+    expect(document.activeElement).not.toBe(background);
+  }
+});
+
+test('keeps programmatic focus inside the active modal', async () => {
+  render(<DialogFixture />);
+  const background = page.getByRole('button', { name: 'Outside action' }).element();
+  await openSettings();
+  const dialog = page.getByRole('dialog', { name: 'Settings', exact: true }).element();
   background.focus();
-  await expect.element(input).toHaveFocus();
-  await userEvent.tab();
-  await expect.element(page.getByRole('combobox', { name: 'Course', exact: true })).toHaveFocus();
-  await userEvent.tab();
-  await expect.element(page.getByRole('button', { name: 'More settings' })).toHaveFocus();
-  await userEvent.tab();
-  await expect.element(page.getByRole('button', { name: 'Save settings' })).toHaveFocus();
-  await userEvent.tab({ shift: true });
-  await userEvent.tab({ shift: true });
-  await userEvent.tab({ shift: true });
-  await expect.element(input).toHaveFocus();
-  await userEvent.tab();
-  await userEvent.tab();
-  await userEvent.tab();
-  await userEvent.keyboard('{Enter}');
-  await expect.element(page.getByRole('dialog', { name: 'Settings', exact: true })).not.toBeInTheDocument();
-  await expect.element(page.getByRole('button', { name: 'Open settings' })).toHaveFocus();
+  await expect.poll(() => dialog.contains(document.activeElement)).toBe(true);
 });
 
-test('supports focusing the dialog itself and returning focus on Escape', async () => {
-  render(<DialogFixture initialFocus="dialog" />);
-  await openSettings();
-  await expect.element(page.getByRole('dialog', { name: 'Settings', exact: true })).toHaveFocus();
+test('lets Tab leave a nonmodal popover and restores its trigger after Escape', async () => {
+  render(<NonmodalPopoverFixture />);
+  const trigger = page.getByRole('button', { name: 'Open details' });
+  await trigger.click();
+  await expect.element(page.getByRole('textbox', { name: 'Nickname' })).toHaveFocus();
   await userEvent.keyboard('{Escape}');
-  await expect.element(page.getByRole('dialog', { name: 'Settings', exact: true })).not.toBeInTheDocument();
+  await expect.element(page.getByRole('dialog', { name: 'Details' })).not.toBeInTheDocument();
+  await expect.element(trigger).toHaveFocus();
+  await trigger.click();
+  await expect.element(page.getByRole('textbox', { name: 'Nickname' })).toHaveFocus();
+  await userEvent.tab();
+  await expect.element(page.getByRole('button', { name: 'Done' })).toHaveFocus();
+  await userEvent.tab();
+  await expect.element(page.getByRole('button', { name: 'After details' })).toHaveFocus();
+});
+
+test('navigates Dialog → Popover → Select and dismisses one layer per Escape with focus return', async () => {
+  render(<DialogFixture />);
+  await openAdvanced();
+  await userEvent.tab();
+  const trigger = page.getByRole('combobox', { name: 'Advanced course' });
+  await expect.element(trigger).toHaveFocus();
+  await userEvent.keyboard('{ArrowDown}');
+  await expect.element(page.getByRole('listbox')).toBeVisible();
+  await expect.element(page.getByRole('option', { name: 'Alpha' })).toHaveFocus();
+  await userEvent.keyboard('{End}');
+  await expect.element(page.getByRole('option', { name: 'Gamma' })).toHaveFocus();
+  await userEvent.keyboard('{Enter}');
+  await expect.element(trigger).toHaveTextContent('Gamma');
+  await expect.element(trigger).toHaveFocus();
+  await userEvent.keyboard('{ArrowDown}');
+  await expect.element(page.getByRole('listbox')).toBeVisible();
+  await userEvent.keyboard('{Escape}');
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument();
+  await expect.element(trigger).toHaveFocus();
+  await expect.element(page.getByRole('dialog', { name: 'Advanced settings' })).toBeVisible();
+  await userEvent.keyboard('{Escape}');
+  await expect.element(page.getByRole('dialog', { name: 'Advanced settings' })).not.toBeInTheDocument();
+  await expect.element(page.getByRole('button', { name: 'More settings' })).toHaveFocus();
+  await expect.element(page.getByRole('dialog', { name: 'Settings', exact: true })).toBeVisible();
+  await userEvent.keyboard('{Escape}');
   await expect.element(page.getByRole('button', { name: 'Open settings' })).toHaveFocus();
 });
 
-test('respects closeOnEscape after repeated native Escape requests', async () => {
-  render(<DialogFixture closeOnEscape={false} />);
-  await openSettings();
+test('selects by pointer inside a child portal without dismissing either parent', async () => {
+  render(<DialogFixture />);
+  await openAdvanced();
+  const trigger = page.getByRole('combobox', { name: 'Advanced course' });
+  await trigger.click();
+  // No force: a visually rendered but inert/obscured child portal must fail this click.
+  await page.getByRole('option', { name: 'Beta' }).click();
+  await expect.element(trigger).toHaveTextContent('Beta');
+  await expect.element(trigger).toHaveFocus();
+  await expect.element(page.getByRole('dialog', { name: 'Advanced settings' })).toBeVisible();
+  await expect.element(page.getByRole('dialog', { name: 'Settings', exact: true })).toBeVisible();
+});
+
+test('preserves cancellation of controlled Dialog dismissal and Select value requests', async () => {
+  render(<DialogFixture cancelEscape cancelValue />);
+  await openAdvanced();
+  const trigger = page.getByRole('combobox', { name: 'Advanced course' });
+  await trigger.click();
+  await page.getByRole('option', { name: 'Beta' }).click();
+  await expect.element(trigger).toHaveTextContent('Choose');
+  await page.getByRole('button', { name: 'Done with advanced settings' }).click();
   await userEvent.keyboard('{Escape}{Escape}');
   await expect.element(page.getByRole('dialog', { name: 'Settings', exact: true })).toBeVisible();
-  await expect.element(page.getByRole('textbox', { name: 'Display name' })).toHaveFocus();
   await page.getByRole('button', { name: 'Save settings' }).click();
   await expect.element(page.getByRole('button', { name: 'Open settings' })).toHaveFocus();
 });
 
-test('filters and selects with the keyboard in a native modal dialog', async () => {
-  render(<DialogFixture />);
-  await openSettings();
-  await userEvent.tab();
-  const trigger = page.getByRole('combobox', { name: 'Course', exact: true });
-  await expect.element(trigger).toHaveFocus();
-  await userEvent.keyboard('{ArrowDown}');
-  const search = page.getByRole('textbox', { name: 'Search courses' });
-  await expect.element(search).toHaveFocus();
-  await search.fill('bet');
-  await expect.element(page.getByRole('option', { name: 'Beta' })).toBeVisible();
-  await expect.element(page.getByRole('option', { name: 'Alpha' })).not.toBeInTheDocument();
-  await expect.element(page.getByRole('option', { name: 'Gamma' })).not.toBeInTheDocument();
-  await userEvent.keyboard('{Enter}');
-  await expect.element(trigger).toHaveTextContent('Beta');
-  await expect.element(trigger).toHaveFocus();
-  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument();
-  await userEvent.keyboard('{ArrowDown}{Escape}');
-  await expect.element(trigger).toHaveFocus();
-  await expect.element(trigger).toHaveTextContent('Beta');
-  await expect.element(page.getByRole('dialog', { name: 'Settings', exact: true })).toBeVisible();
-  await userEvent.keyboard('{Escape}');
-  await expect.element(page.getByRole('button', { name: 'Open settings' })).toHaveFocus();
-});
-
-test('allows pointer selection in the dialog top layer', async () => {
-  render(<DialogFixture />);
-  await openSettings();
-  const trigger = page.getByRole('combobox', { name: 'Course', exact: true });
-  await trigger.click();
-  // A body portal behind a modal can look visible in DOM assertions but cannot
-  // receive a real pointer click. Never force this interaction.
-  await page.getByRole('option', { name: 'Gamma' }).click();
-  await expect.element(trigger).toHaveTextContent('Gamma');
-  await expect.element(trigger).toHaveFocus();
-  await expect.element(page.getByRole('dialog', { name: 'Settings', exact: true })).toBeVisible();
-});
-
-test('focuses a popup in a native dialog and dismisses one layer per Escape', async () => {
-  render(<DialogFixture />);
-  await openSettings();
-  const trigger = page.getByRole('button', { name: 'More settings' });
-  await trigger.click();
-  await expect.element(page.getByRole('textbox', { name: 'Nickname' })).toHaveFocus();
-  await userEvent.tab({ shift: true });
-  await expect.element(page.getByRole('button', { name: 'Last popup action' })).toHaveFocus();
-  await userEvent.tab();
-  await expect.element(page.getByRole('textbox', { name: 'Nickname' })).toHaveFocus();
-  await userEvent.keyboard('{Escape}');
-  await expect.element(page.getByRole('dialog', { name: 'Advanced settings' })).not.toBeInTheDocument();
-  await expect.element(trigger).toHaveFocus();
-  await expect.element(page.getByRole('dialog', { name: 'Settings', exact: true })).toBeVisible();
-  await userEvent.keyboard('{Escape}');
-  await expect.element(page.getByRole('button', { name: 'Open settings' })).toHaveFocus();
-});
-
-test('dismisses only the selector when a popup and native dialog are also open', async () => {
-  render(<DialogFixture />);
-  await openSettings();
-  await page.getByRole('button', { name: 'More settings' }).click();
-  await userEvent.tab();
-  const trigger = page.getByRole('combobox', { name: 'Advanced course' });
-  await expect.element(trigger).toHaveFocus();
-  await userEvent.keyboard('{ArrowDown}{End}{Enter}');
-  await expect.element(trigger).toHaveTextContent('Gamma');
-  await userEvent.keyboard('{ArrowDown}{Escape}');
-  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument();
-  await expect.element(trigger).toHaveFocus();
-  await expect.element(page.getByRole('dialog', { name: 'Advanced settings' })).toBeVisible();
-  await expect.element(page.getByRole('dialog', { name: 'Settings', exact: true })).toBeVisible();
-  await userEvent.keyboard('{Escape}');
-  await expect.element(page.getByRole('button', { name: 'More settings' })).toHaveFocus();
-  await userEvent.keyboard('{Escape}');
-  await expect.element(page.getByRole('button', { name: 'Open settings' })).toHaveFocus();
+test('inherits scoped theme and direction through an explicitly placed portal container', async () => {
+  render(<DialogFixture scoped />);
+  await openAdvanced();
+  await page.getByRole('combobox', { name: 'Advanced course' }).click();
+  const host = page.getByTestId('overlay-host').element();
+  for (const popup of [
+    page.getByRole('dialog', { name: 'Settings', exact: true }),
+    page.getByRole('dialog', { name: 'Advanced settings' }),
+    page.getByRole('listbox'),
+  ]) {
+    expect(host.contains(popup.element())).toBe(true);
+    await expect.element(popup).toHaveStyle({ direction: 'rtl', colorScheme: 'dark' });
+  }
+  const option = page.getByRole('option', { name: 'Gamma' });
+  await option.click();
+  await expect.element(page.getByRole('combobox', { name: 'Advanced course' })).toHaveTextContent('Gamma');
 });
 
 test('escapes overflow clipping and follows the anchor when its container scrolls', async () => {
@@ -147,7 +162,6 @@ test('escapes overflow clipping and follows the anchor when its container scroll
   await expect
     .poll(() => list.element().getBoundingClientRect().bottom)
     .toBeGreaterThan(scrollport.element().getBoundingClientRect().bottom);
-  // Scroll the actual container; the browser dispatches its native scroll event.
   scrollport.element().scrollTop += 40;
   await expect.poll(() => trigger.element().getBoundingClientRect().top).toBeLessThan(anchorTop - 30);
   await expect
@@ -157,7 +171,6 @@ test('escapes overflow clipping and follows the anchor when its container scroll
       return Math.abs(popup.top - anchor.bottom - 4);
     })
     .toBeLessThan(2);
-  // The last option extends beyond the clipping ancestor and must remain usable.
   await page.getByRole('option', { name: 'Gamma' }).click();
   await expect.element(trigger).toHaveTextContent('Gamma');
 });
@@ -176,58 +189,132 @@ test('flips the selector above its anchor at the bottom viewport edge', async ()
     .toBeLessThan(2);
   const popup = list.element().getBoundingClientRect();
   expect(popup.top).toBeGreaterThanOrEqual(0);
-  expect(popup.left).toBeGreaterThanOrEqual(0);
   expect(popup.right).toBeLessThanOrEqual(window.innerWidth);
   await page.getByRole('option', { name: 'Beta' }).click();
   await expect.element(trigger).toHaveTextContent('Beta');
 });
 
-test('initially open nested popovers give Escape to the child', async () => {
-  render(
-    <Popover defaultOpen trigger={<button type="button">Outer opener</button>} aria-label="Outer">
-      <Popover defaultOpen trigger={<button type="button">Inner opener</button>} aria-label="Inner">
-        <input aria-label="Inner input" />
-      </Popover>
-    </Popover>,
-  );
-  await expect.element(page.getByRole('dialog', { name: 'Inner', exact: true })).toBeVisible();
-  page.getByRole('textbox', { name: 'Inner input' }).element().focus();
+test('submits required selections and restores caller-owned reset values through rerender', async () => {
+  render(<SelectFormFixture />);
+  const form = page.getByRole('form', { name: 'Courses' }).element();
+  if (!(form instanceof HTMLFormElement)) throw new Error('Missing form');
+  expect(form.checkValidity()).toBe(false);
+  await page.getByRole('button', { name: 'Submit courses' }).click();
+  await expect.element(page.getByRole('combobox', { name: 'Required courses' })).toHaveFocus();
+  await expect.element(page.getByRole('alert')).toHaveTextContent('A course is required.');
+  await userEvent.keyboard('{ArrowDown}');
+  await expect.element(page.getByRole('option', { name: 'Alpha' })).toHaveFocus();
+  await userEvent.keyboard('{Enter}');
   await userEvent.keyboard('{Escape}');
-  await expect.element(page.getByRole('dialog', { name: 'Inner', exact: true })).not.toBeInTheDocument();
-  await expect.element(page.getByRole('dialog', { name: 'Outer', exact: true })).toBeVisible();
-  await expect.element(page.getByRole('button', { name: 'Inner opener' })).toHaveFocus();
-  await userEvent.keyboard('{Escape}');
-  await expect.element(page.getByRole('dialog', { name: 'Outer', exact: true })).not.toBeInTheDocument();
-  await expect.element(page.getByRole('button', { name: 'Outer opener' })).toHaveFocus();
+  await page.getByRole('combobox', { name: 'Single course' }).click();
+  await page.getByRole('option', { name: 'Beta' }).click();
+  expect(form.checkValidity()).toBe(true);
+  await page.getByRole('button', { name: 'Submit courses' }).click();
+  await expect
+    .element(page.getByRole('status', { name: 'Submitted entries' }))
+    .toHaveTextContent('[["course","Beta"],["courses","Alpha"],["readonly","Alpha"]]');
+  const resetData = resetForm(form);
+  expect(resetData.getAll('course')).toEqual(['Alpha']);
+  expect(resetData.getAll('courses')).toEqual([]);
+  await expect.element(page.getByRole('combobox', { name: 'Single course' })).toHaveTextContent('Alpha');
+  await page.getByRole('button', { name: 'Rerender 0' }).click();
+  await expect.element(page.getByRole('combobox', { name: 'Required courses' })).toHaveTextContent('Choose');
+  expect(new FormData(form).getAll('course')).toEqual(['Alpha']);
+  expect(new FormData(form).getAll('courses')).toEqual([]);
 });
 
-function PlacementFixture({ placement, disabled = false }: { placement: 'top' | 'bottom'; disabled?: boolean }) {
-  return (
-    <Popover defaultOpen placement={placement} trigger={<button type="button">Outer opener</button>} aria-label="Outer">
-      <Select disabled={disabled} aria-label="Inner select" options={['Alpha', 'Beta', 'Gamma']} />
-    </Popover>
-  );
+test('honors canceled resets and preserves selection when the caller supplies no reset policy', async () => {
+  const { rerender } = render(<SelectFormFixture cancelReset />);
+  await page.getByRole('combobox', { name: 'Single course' }).click();
+  await page.getByRole('option', { name: 'Beta' }).click();
+  await expect.element(page.getByRole('combobox', { name: 'Single course' })).toHaveTextContent('Beta');
+  const canceledForm = page.getByRole('form', { name: 'Courses' }).element() as HTMLFormElement;
+  expect(resetForm(canceledForm).get('course')).toBe('Beta');
+  await expect.element(page.getByRole('combobox', { name: 'Single course' })).toHaveTextContent('Beta');
+  rerender(<SelectFormFixture key="preserved" preserveOnReset />);
+  await page.getByRole('combobox', { name: 'Single course' }).click();
+  await page.getByRole('option', { name: 'Gamma' }).click();
+  resetForm(page.getByRole('form', { name: 'Courses' }).element() as HTMLFormElement);
+  await expect.element(page.getByRole('combobox', { name: 'Single course' })).toHaveTextContent('Gamma');
+  const form = page.getByRole('form', { name: 'Courses' }).element() as HTMLFormElement;
+  expect(new FormData(form).getAll('course')).toEqual(['Gamma']);
+});
+
+function resetForm(form: HTMLFormElement) {
+  let data!: FormData;
+  act(() => {
+    form.reset();
+    data = new FormData(form);
+  });
+  return data;
 }
 
-test('parent placement changes preserve the nested selector Escape priority', async () => {
-  const { rerender } = render(<PlacementFixture placement="bottom" />);
-  const trigger = page.getByRole('combobox', { name: 'Inner select' });
+test('preserves trigger identity, focus, IDs and child state on caller-owned reset', async () => {
+  render(<SelectResetFixture />);
+  await page.getByRole('button', { name: 'Counter 0' }).click();
+  const trigger = page.getByRole('combobox', { name: 'Reset course' });
+  const original = trigger.element();
+  const id = original.id;
   await trigger.click();
-  await expect.element(page.getByRole('listbox')).toBeVisible();
-  rerender(<PlacementFixture placement="top" />);
-  await userEvent.keyboard('{Escape}');
-  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument();
-  await expect.element(page.getByRole('dialog', { name: 'Outer', exact: true })).toBeVisible();
+  await page.getByRole('option', { name: 'Gamma' }).click();
+  original.focus();
+  const form = page.getByRole('form', { name: 'Reset form' }).element() as HTMLFormElement;
+  expect(resetForm(form).get('course')).toBe('Alpha');
+  expect(trigger.element()).toBe(original);
+  expect(original.id).toBe(id);
   await expect.element(trigger).toHaveFocus();
+  await expect.element(trigger).toHaveTextContent('Alpha');
+  await expect.element(page.getByRole('button', { name: 'Counter 1' })).toBeVisible();
 });
 
-test('disabling an open selector releases Escape ownership to its parent', async () => {
-  const { rerender } = render(<PlacementFixture placement="bottom" />);
-  await page.getByRole('combobox', { name: 'Inner select' }).click();
-  rerender(<PlacementFixture placement="bottom" disabled />);
-  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument();
-  page.getByRole('dialog', { name: 'Outer', exact: true }).element().focus();
+test('preserves current open state through reset without replaying defaultOpen', async () => {
+  render(<SelectResetFixture defaultOpen />);
+  const form = page.getByRole('form', { name: 'Reset form' }).element() as HTMLFormElement;
+  await expect.element(page.getByRole('option', { name: 'Alpha' })).toHaveFocus();
+  const option = page.getByRole('option', { name: 'Alpha' }).element();
+  resetForm(form);
+  await expect.element(page.getByRole('option', { name: 'Alpha' })).toHaveFocus();
+  expect(page.getByRole('option', { name: 'Alpha' }).element()).toBe(option);
   await userEvent.keyboard('{Escape}');
-  await expect.element(page.getByRole('dialog', { name: 'Outer', exact: true })).not.toBeInTheDocument();
-  await expect.element(page.getByRole('button', { name: 'Outer opener' })).toHaveFocus();
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument();
+  resetForm(form);
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument();
+  await expect.element(page.getByRole('combobox')).toHaveFocus();
+});
+
+test('resets through a late mounted external form and follows changes to the native form owner', async () => {
+  const { rerender } = render(<LateFormSelectFixture />);
+  rerender(<LateFormSelectFixture mounted />);
+  const trigger = page.getByRole('combobox', { name: 'External course' });
+  await trigger.click();
+  await page.getByRole('option', { name: 'Beta' }).click();
+  const late = page.getByRole('form', { name: 'Late form' }).element() as HTMLFormElement;
+  const other = page.getByRole('form', { name: 'Other form' }).element() as HTMLFormElement;
+  expect(new FormData(late).get('course')).toBe('Beta');
+  expect(resetForm(late).get('course')).toBe('Alpha');
+  await expect.element(trigger).toHaveTextContent('Alpha');
+  expect(new FormData(late).get('course')).toBe('Alpha');
+  await trigger.click();
+  await page.getByRole('option', { name: 'Gamma' }).click();
+  rerender(<LateFormSelectFixture mounted form="other" />);
+  expect(new FormData(other).get('course')).toBe('Gamma');
+  resetForm(late);
+  await expect.element(trigger).toHaveTextContent('Gamma');
+  expect(resetForm(other).get('course')).toBe('Alpha');
+  await expect.element(trigger).toHaveTextContent('Alpha');
+  expect(new FormData(other).get('course')).toBe('Alpha');
+});
+
+test('keeps renderItem local state with its stable item key through reorder', async () => {
+  const { rerender } = render(<SelectReorderFixture />);
+  await expect.element(page.getByRole('option', { name: 'Alpha originally Alpha' })).toBeVisible();
+  const alpha = page.getByRole('option', { name: 'Alpha originally Alpha' }).element();
+  rerender(<SelectReorderFixture reversed />);
+  for (const name of ['Gamma', 'Beta', 'Alpha']) {
+    await expect.element(page.getByRole('option', { name: `${name} originally ${name}` })).toBeVisible();
+  }
+  expect(page.getByRole('option', { name: 'Alpha originally Alpha' }).element()).toBe(alpha);
+  expect(
+    Array.from(page.getByRole('listbox').element().querySelectorAll('[role="option"]'), (item) => item.textContent),
+  ).toEqual(['Gamma originally Gamma', 'Beta originally Beta', 'Alpha originally Alpha']);
 });

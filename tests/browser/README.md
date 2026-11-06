@@ -28,7 +28,9 @@ Restore the recorded value afterwards, or delete the override with `defaults del
 
 Fixtures stay outside `src` and published output. Setup preserves native dialog, focus, layout and scroll APIs and cleans up React after each test. Use native interactions and observable roles/state; geometry assertions poll actual rectangles rather than mocking layout.
 
-Vitest runs tests in an iframe. Establish initial keyboard focus inside it, then assert the subsequent focus transitions. Native dialog Tab boundaries can include browser chrome, so an immediate last-to-first wrap is not a portable assertion.
+Use unit tests for AET composition, labels, translations, callback/ref forwarding and owned state or promise lifetimes. Use real browsers for native focus, keyboard/pointer interaction, forms, positioning and emitted CSS; avoid repeating the same workflow in jsdom. Await the relevant state or promise instead of flushing an arbitrary timer.
+
+Vitest runs tests in an iframe. Establish initial keyboard focus inside it. Exercise keyboard containment separately from Escape dismissal and focus return: Tab can reach browser chrome. Assert focus inside the active modal; require a particular descendant only when the caller requested that target.
 
 ## Failure artifacts
 

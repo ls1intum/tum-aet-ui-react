@@ -8,7 +8,7 @@ function Demo() {
   const [result, setResult] = useState('No decision yet');
   const ask = async () => {
     const accepted = await confirm({
-      header: 'Delete tutorial group?',
+      title: 'Delete tutorial group?',
       message: 'This action cannot be undone.',
       acceptLabel: 'Delete',
       rejectLabel: 'Cancel',
