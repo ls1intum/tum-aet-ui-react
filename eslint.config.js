@@ -137,6 +137,7 @@ export default tseslint.config(
     // Browser queries and native interactions come from vitest/browser, not Testing Library.
     extends: [vitest.configs.recommended],
     rules: {
+      'vitest/expect-expect': ['error', { assertFunctionNames: ['expect', 'expectPalette'] }],
       'vitest/no-focused-tests': 'error',
       'vitest/no-disabled-tests': 'error',
     },

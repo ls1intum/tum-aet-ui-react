@@ -1,9 +1,5 @@
 import type { Decorator, Preview } from '@storybook/react-vite';
-import '../src/styles/themes.css';
-import '../src/styles/base.css';
-
-// Every component stylesheet, the same set that scripts/build-styles.mjs ships.
-import.meta.glob('../src/components/**/*.css', { eager: true });
+import '../src/styles/index.css';
 
 const withTheme: Decorator = (Story, context) => {
   const theme = context.globals.theme === 'dark' ? 'dark' : 'light';

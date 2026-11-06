@@ -15,7 +15,7 @@ import '@tumaet/ui-react/styles.css';
 import { Button, Dialog } from '@tumaet/ui-react';
 ```
 
-Import the stylesheet once, after your own global styles. It contains the theme (in the `tumaet-ui-theme` cascade layer, so your own declarations win) and the styles of every component. Components have no runtime dependencies besides `react` and `react-dom` 19.
+Import the stylesheet once. Tokens, base rules and all component styles live in the `tumaet-ui` cascade layer. Declare application layer order before imports so resets stay below the library and overrides stay above it; see the Theming guide for plain CSS and Tailwind examples. Components have no runtime dependencies besides `react` and `react-dom` 19.
 
 ## Principles
 

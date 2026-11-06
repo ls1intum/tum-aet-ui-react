@@ -27,7 +27,7 @@ import '@tumaet/ui-react/styles.css';
 import { Button, Dialog } from '@tumaet/ui-react';
 ```
 
-Set `data-theme="dark"` on `<html>` for the dark theme. Override the `--tumaet-ui-*` custom properties in an unlayered stylesheet to adapt the theme; the defaults are in the `tumaet-ui-theme` cascade layer.
+Set `data-theme="dark"` or `.dark` on `<html>` for the dark theme; `.light` or `data-theme="light"` can establish a light subtree. All styles use the `tumaet-ui` cascade layer with `tokens`, `base` and `components` sublayers. Declare application layer order before stylesheet imports, placing resets below the library and overrides above it; see the [theming guide](docs/theming.mdx).
 
 ## Components
 
