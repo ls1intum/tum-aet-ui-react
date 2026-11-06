@@ -1,23 +1,47 @@
 import { Button } from '../button';
-import { Tooltip } from './tooltip';
+import {
+  Tooltip,
+  TooltipProvider,
+  TooltipTrigger,
+  TooltipPortal,
+  TooltipPositioner,
+  TooltipPopup,
+  TooltipArrow,
+} from './tooltip';
 
 export default function TooltipDemo() {
   return (
-    <div style={{ display: 'flex', gap: 12, padding: 60, flexWrap: 'wrap' }}>
-      {(['top', 'bottom', 'left', 'right'] as const).map((placement) => (
-        <Tooltip key={placement} content={`Tooltip on the ${placement}`} placement={placement}>
-          <Button variant="outlined">{placement}</Button>
+    <TooltipProvider delay={150} closeDelay={100}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, padding: 32 }}>
+        {(['top', 'right', 'bottom', 'left'] as const).map((side) => (
+          <Tooltip key={side}>
+            <TooltipTrigger render={<Button variant="outlined" />}>{side}</TooltipTrigger>
+            <TooltipPortal>
+              <TooltipPositioner side={side}>
+                <TooltipPopup>
+                  Tooltip on the {side}
+                  <TooltipArrow />
+                </TooltipPopup>
+              </TooltipPositioner>
+            </TooltipPortal>
+          </Tooltip>
+        ))}
+        <Tooltip>
+          <TooltipTrigger render={<Button variant="outlined" />}>Validation reasons</TooltipTrigger>
+          <TooltipPortal>
+            <TooltipPositioner>
+              <TooltipPopup variant="list">
+                <ul>
+                  <li>Name is required</li>
+                  <li>Email must be valid</li>
+                  <li>Password is too short</li>
+                </ul>
+                <TooltipArrow />
+              </TooltipPopup>
+            </TooltipPositioner>
+          </TooltipPortal>
         </Tooltip>
-      ))}
-      <Tooltip content={['Name is required', 'Email must be valid', 'Password is too short']}>
-        <Button severity="secondary">List</Button>
-      </Tooltip>
-      <Tooltip content={<strong>Rich node</strong>}>
-        <Button severity="secondary">Node</Button>
-      </Tooltip>
-      <Tooltip content="Instant" showDelay={0} hideDelay={0}>
-        <Button severity="secondary">No delay</Button>
-      </Tooltip>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

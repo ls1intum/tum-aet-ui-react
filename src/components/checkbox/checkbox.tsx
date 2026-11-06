@@ -1,96 +1,47 @@
-import {
-  useLayoutEffect,
-  useRef,
-  type ChangeEvent,
-  type CSSProperties,
-  type InputHTMLAttributes,
-  type Ref,
-} from 'react';
+import { useLayoutEffect, useMemo, useRef, type ComponentPropsWithRef } from 'react';
 import { cx } from '../../internal/cx';
 import { CheckIcon, MinusIcon } from '../../internal/icons';
 import { mergeRefs } from '../../internal/merge-refs';
-import { useControllable } from '../../internal/use-controllable';
-import { useFormFieldControl } from '../form-field/form-field';
 
-export interface CheckboxProps extends Omit<
-  InputHTMLAttributes<HTMLInputElement>,
-  'type' | 'size' | 'checked' | 'defaultChecked' | 'onChange' | 'className' | 'style'
-> {
-  /** Checked state of a controlled checkbox. Omit it for an uncontrolled one. */
-  checked?: boolean;
-  /** Initial state of an uncontrolled checkbox. */
-  defaultChecked?: boolean;
-  /** Called with the new state and the originating event. */
-  onChange?: (checked: boolean, event: ChangeEvent<HTMLInputElement>) => void;
-  /** Shows the partial-selection dash. Purely visual and exposed as the native indeterminate state; `checked` is unchanged. */
+export type CheckboxProps = Omit<ComponentPropsWithRef<'input'>, 'type' | 'children'> & {
+  /** Applied to the native input property after each render; activation clears it natively. */
   indeterminate?: boolean;
-  /** Marks the checkbox invalid (also set by an enclosing invalid FormField). */
-  invalid?: boolean;
-  /** Class of the wrapper element. */
-  className?: string;
-  /** Style of the wrapper element. */
-  style?: CSSProperties;
-  ref?: Ref<HTMLInputElement>;
-}
+};
 
-/**
- * Native checkbox with the TUM AET UI look. Native props (`id`, `name`, `value`, `aria-*`, ...) go to the `<input>`;
- * `className` and `style` go to the wrapper. Label it with a `<label htmlFor>` or `aria-label`.
- */
+/** Native checkbox. className/style target the visual wrapper; all other props and ref target the input. */
 export function Checkbox({
-  checked,
-  defaultChecked = false,
-  onChange,
-  indeterminate = false,
-  invalid,
-  disabled,
   className,
   style,
+  indeterminate = false,
   ref,
-  id,
-  'aria-describedby': describedBy,
-  'aria-invalid': ariaInvalid,
-  ...rest
+  readOnly = false,
+  onClick,
+  onChange,
+  ...props
 }: CheckboxProps) {
-  const control = useFormFieldControl({ id, invalid, 'aria-describedby': describedBy, 'aria-invalid': ariaInvalid });
-  const [isChecked, setChecked] = useControllable<boolean>(checked, defaultChecked);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const inputRef = useMemo(() => mergeRefs(input, ref), [ref]);
   useLayoutEffect(() => {
-    if (inputRef.current) inputRef.current.indeterminate = indeterminate;
-  }, [indeterminate, isChecked]);
-
-  let icon = null;
-  if (indeterminate) icon = <MinusIcon className="tumaet-ui-icon tumaet-ui-checkbox-icon" />;
-  else if (isChecked) icon = <CheckIcon className="tumaet-ui-icon tumaet-ui-checkbox-icon" />;
-
+    if (input.current) input.current.indeterminate = indeterminate;
+  });
   return (
-    <span
-      className={cx('tumaet-ui-checkbox', className)}
-      style={style}
-      data-checked={isChecked || undefined}
-      data-indeterminate={indeterminate || undefined}
-      data-disabled={disabled === true || undefined}
-      data-invalid={control.invalid || undefined}
-    >
+    <span className={cx('tumaet-ui-checkbox', className)} style={style}>
       <input
-        {...rest}
-        ref={mergeRefs(inputRef, ref)}
+        {...props}
+        ref={inputRef}
         type="checkbox"
-        id={control.id}
-        aria-describedby={control['aria-describedby']}
-        aria-invalid={control['aria-invalid']}
         className="tumaet-ui-checkbox-input"
-        checked={isChecked}
-        disabled={disabled}
-        onChange={(event) => {
-          // A click makes the browser drop the native mixed state; the parent owns it, so put it back.
-          event.target.indeterminate = indeterminate;
-          setChecked(event.target.checked);
-          onChange?.(event.target.checked, event);
+        readOnly={readOnly}
+        aria-readonly={readOnly ? true : props['aria-readonly']}
+        onChange={readOnly ? undefined : onChange}
+        onClick={(event) => {
+          onClick?.(event);
+          if (readOnly) event.preventDefault();
         }}
       />
       <span className="tumaet-ui-checkbox-box" aria-hidden="true">
-        {icon}
+        <CheckIcon className="tumaet-ui-icon tumaet-ui-checkbox-icon tumaet-ui-checkbox-check" />
+        <MinusIcon className="tumaet-ui-icon tumaet-ui-checkbox-icon tumaet-ui-checkbox-minus" />
       </span>
     </span>
   );

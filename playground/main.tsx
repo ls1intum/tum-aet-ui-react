@@ -1,10 +1,8 @@
 import { createRoot } from 'react-dom/client';
 import { useEffect, useState, type ComponentType } from 'react';
-import '../src/styles/themes.css';
-import '../src/styles/base.css';
+import '../src/styles/index.css';
 
-// Every stylesheet and every *.demo.tsx in src/components shows up here automatically.
-import.meta.glob('../src/components/**/*.css', { eager: true });
+// Every *.demo.tsx in src/components shows up here automatically.
 const demos = import.meta.glob<{ default: ComponentType }>('../src/components/**/*.demo.tsx', { eager: true });
 const entries = Object.entries(demos)
   .map(([path, mod]) => ({ name: (path.split('/').pop() ?? path).replace('.demo.tsx', ''), Demo: mod.default }))

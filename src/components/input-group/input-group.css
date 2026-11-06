@@ -68,21 +68,17 @@
   border-end-start-radius: 0;
 }
 
-.tumaet-ui-input-group > .tumaet-ui-input-number:not(:last-child) > .tumaet-ui-input-number-input {
+/* Hidden submission inputs do not form a visible group edge. */
+.tumaet-ui-input-group
+  > .tumaet-ui-input-number:has(~ :not([hidden], input[type='hidden'], input[aria-hidden='true']))
+  > .tumaet-ui-input-number-input {
   border-start-end-radius: 0;
   border-end-end-radius: 0;
 }
 
 .tumaet-ui-input-group
-  > .tumaet-ui-input-number:not(:last-child)
-  > .tumaet-ui-input-number-button-group
-  > .tumaet-ui-input-number-increment {
+  > .tumaet-ui-input-number:has(~ :not([hidden], input[type='hidden'], input[aria-hidden='true']))
+  .tumaet-ui-input-number-button {
   border-start-end-radius: 0;
-}
-
-.tumaet-ui-input-group
-  > .tumaet-ui-input-number:not(:last-child)
-  > .tumaet-ui-input-number-button-group
-  > .tumaet-ui-input-number-decrement {
   border-end-end-radius: 0;
 }

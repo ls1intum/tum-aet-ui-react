@@ -1,91 +1,71 @@
-import { useId, type HTMLAttributes, type ReactNode, type Ref } from 'react';
+import type { ComponentPropsWithRef } from 'react';
+import { Collapsible } from '@base-ui/react/collapsible';
 import { cx } from '../../internal/cx';
 import { useTranslate } from '../../internal/i18n';
-import { ChevronDownIcon, ChevronUpIcon } from '../../internal/icons';
-import { useControllable } from '../../internal/use-controllable';
+import { ChevronDownIcon } from '../../internal/icons';
 
-export interface PanelProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
-  /** Header content. When it is not text, also set `toggleLabel`. */
-  header?: ReactNode;
-  /** Shows a toggle button that collapses the content (disclosure pattern). */
-  toggleable?: boolean;
-  /** Accessible name of the toggle; defaults to the header or the translated "Collapse"/"Expand". */
-  toggleLabel?: string;
-  /** Controlled collapsed state, applied only when `toggleable`. */
-  collapsed?: boolean;
-  /** Initial collapsed state when uncontrolled. */
-  defaultCollapsed?: boolean;
-  /** Fires with the new collapsed state when the toggle is used. */
-  onCollapsedChange?: (collapsed: boolean) => void;
-  /** Content below the main content, inside the collapsible region. */
-  footer?: ReactNode;
-  ref?: Ref<HTMLDivElement>;
-}
-
-export function Panel({
-  header,
-  toggleable,
-  toggleLabel,
-  collapsed,
-  defaultCollapsed = false,
-  onCollapsedChange,
-  footer,
-  className,
-  children,
-  ...rest
-}: PanelProps) {
-  const t = useTranslate();
-  const id = useId();
-  const headerId = `${id}-header`;
-  const contentId = `${id}-content`;
-  const [isCollapsedState, setCollapsed] = useControllable(collapsed, defaultCollapsed, onCollapsedChange);
-  const isCollapsed = toggleable === true && isCollapsedState;
-  const hasHeader =
-    header !== undefined && header !== null && header !== false && !(typeof header === 'string' && !header.trim());
-  const customLabel = toggleLabel?.trim();
-  const hasCustomLabel = customLabel !== undefined && customLabel !== '';
-  const isToggleable = toggleable === true;
-  const defaultLabel = hasHeader
-    ? undefined
-    : t(isCollapsedState ? 'tumAetUi.panel.expand' : 'tumAetUi.panel.collapse');
-  const ToggleIcon = isCollapsedState ? ChevronDownIcon : ChevronUpIcon;
+export type PanelProps = ComponentPropsWithRef<typeof Collapsible.Root>;
+export function Panel({ className, ...props }: PanelProps) {
   return (
-    <div
-      {...rest}
-      data-collapsed={isToggleable ? isCollapsedState : undefined}
-      className={cx('tumaet-ui-panel', className)}
+    <Collapsible.Root
+      {...props}
+      className={
+        typeof className === 'function'
+          ? (state) => cx('tumaet-ui-panel', className(state))
+          : cx('tumaet-ui-panel', className)
+      }
+    />
+  );
+}
+export type PanelHeaderProps = ComponentPropsWithRef<'div'>;
+export function PanelHeader({ className, ...props }: PanelHeaderProps) {
+  return <div {...props} className={cx('tumaet-ui-panel-header', className)} />;
+}
+export type PanelTitleProps = ComponentPropsWithRef<'span'>;
+export function PanelTitle({ className, ...props }: PanelTitleProps) {
+  return <span {...props} className={cx('tumaet-ui-panel-title', className)} />;
+}
+export type PanelTriggerProps = ComponentPropsWithRef<typeof Collapsible.Trigger>;
+/** Defaults to translated Expand/Collapse; children can supply a custom control. */
+export function PanelTrigger({ className, children, render, ...props }: PanelTriggerProps) {
+  const t = useTranslate();
+  const defaultRender: Collapsible.Trigger.Props['render'] = (buttonProps, state) => (
+    <button
+      type="button"
+      {...buttonProps}
+      aria-label={buttonProps['aria-label'] ?? t(state.open ? 'tumAetUi.panel.collapse' : 'tumAetUi.panel.expand')}
     >
-      <div className={cx('tumaet-ui-panel-header', isToggleable && 'tumaet-ui-panel-header-toggleable')}>
-        <span id={headerId} className="tumaet-ui-panel-title">
-          {header}
-        </span>
-        {isToggleable ? (
-          <button
-            type="button"
-            className="tumaet-ui-panel-toggler"
-            aria-expanded={!isCollapsedState}
-            aria-controls={contentId}
-            aria-label={hasCustomLabel ? customLabel : defaultLabel}
-            aria-labelledby={!hasCustomLabel && hasHeader ? headerId : undefined}
-            onClick={() => setCollapsed(!isCollapsedState)}
-          >
-            <ToggleIcon />
-          </button>
-        ) : null}
+      <ChevronDownIcon className="tumaet-ui-panel-toggle-icon" />
+    </button>
+  );
+  return (
+    <Collapsible.Trigger
+      {...props}
+      render={render ?? (children === null || children === undefined ? defaultRender : undefined)}
+      className={
+        typeof className === 'function'
+          ? (state) => cx('tumaet-ui-panel-toggler', className(state))
+          : cx('tumaet-ui-panel-toggler', className)
+      }
+    >
+      {children}
+    </Collapsible.Trigger>
+  );
+}
+export type PanelContentProps = ComponentPropsWithRef<typeof Collapsible.Panel>;
+export function PanelContent({ className, children, ...props }: PanelContentProps) {
+  return (
+    <Collapsible.Panel
+      {...props}
+      className={
+        typeof className === 'function'
+          ? (state) => cx('tumaet-ui-panel-content-container', className(state))
+          : cx('tumaet-ui-panel-content-container', className)
+      }
+    >
+      <div className="tumaet-ui-panel-content-wrapper">
+        <div className="tumaet-ui-panel-content">{children}</div>
       </div>
-      <div
-        id={contentId}
-        className="tumaet-ui-panel-content-container"
-        role={isToggleable && hasHeader ? 'region' : undefined}
-        aria-labelledby={isToggleable && hasHeader ? headerId : undefined}
-        aria-hidden={isCollapsed || undefined}
-        inert={isCollapsed}
-      >
-        <div className="tumaet-ui-panel-content-wrapper">
-          <div className="tumaet-ui-panel-content">{children}</div>
-          {footer}
-        </div>
-      </div>
-    </div>
+    </Collapsible.Panel>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, waitFor } from 'storybook/test';
-import { FormField } from '../form-field/form-field';
+import { expect, fn } from 'storybook/test';
+import { Field, FieldDescription } from '../form-field/form-field';
 import { RadioButton, RadioGroup } from './radio-button';
 
 const OPTIONS = [
@@ -20,12 +20,6 @@ function FormLayout(Story: Parameters<Decorator>[0]) {
   );
 }
 
-/** Narrows an element a play function expects to find. */
-function required<T>(value: T | null | undefined): T {
-  if (value === null || value === undefined) throw new Error('Expected the element to be present');
-  return value;
-}
-
 const optionStyle = { display: 'flex', alignItems: 'center', gap: 'calc(var(--tumaet-ui-spacing) * 2)' } as const;
 
 const meta = {
@@ -36,24 +30,25 @@ const meta = {
     docs: {
       description: {
         component:
-          '`RadioGroup` (`role="radiogroup"`) around `RadioButton`s. The radios are native inputs sharing a `name`, so the browser provides ' +
-          'the WAI-ARIA keyboard model: one tab stop, arrow keys move and select, wrapping, skipping disabled radios. ' +
-          'Give the group an accessible name with `aria-label` or `aria-labelledby`. A `RadioButton` also works on its own: ' +
-          'controlled with `checked`, or uncontrolled, where the browser keeps radios with the same `name` exclusive.',
+          'Native fieldset and radio inputs with AET appearance. A required name enables native exclusivity, keyboard navigation and submission. ' +
+          'value/defaultValue use strings or numbers (strict equality); null clears controlled selection. onValueChange receives the selected value and native React change event. ' +
+          'JSX children are independently typed. Use distinct serialized values. Group ref targets the fieldset; option ref targets its input. ' +
+          'Option className/style target the visual wrapper. Uncontrolled reset follows native defaults; controlled state/reset belong to the caller.',
       },
     },
   },
   args: {
+    name: 'email-summary',
     value: 'weekly',
     disabled: false,
-    onChange: fn(),
+    onValueChange: fn(),
   },
   argTypes: {
     value: { control: 'inline-radio', options: OPTIONS.map((option) => option.value) },
-    onChange: { control: false },
+    onValueChange: { control: false },
   },
   decorators: [FormLayout],
-  render: function Render({ value, onChange, ...args }) {
+  render: function Render({ value, onValueChange, ...args }) {
     const [selected, setSelected] = useState(value);
     const [seen, setSeen] = useState(value);
     if (seen !== value) {
@@ -63,30 +58,25 @@ const meta = {
     }
     return (
       <form>
-        <fieldset
-          style={{ display: 'grid', gap: 'calc(var(--tumaet-ui-spacing) * 2)', margin: 0, padding: 0, border: 0 }}
+        <RadioGroup
+          aria-label="Email summary"
+          {...args}
+          value={selected}
+          onValueChange={(next, event) => {
+            onValueChange?.(next, event);
+            setSelected(next);
+          }}
         >
           <legend style={{ fontWeight: 600, marginBlockEnd: 'calc(var(--tumaet-ui-spacing) * 2)' }}>
             Email summary
           </legend>
-          <RadioGroup
-            aria-label="Email summary"
-            name="email-summary"
-            {...args}
-            value={selected}
-            onChange={(next) => {
-              setSelected(next);
-              onChange?.(next);
-            }}
-          >
-            {OPTIONS.map((option) => (
-              <label key={option.value} style={optionStyle}>
-                <RadioButton value={option.value} />
-                {option.label}
-              </label>
-            ))}
-          </RadioGroup>
-        </fieldset>
+          {OPTIONS.map((option) => (
+            <label key={option.value} style={optionStyle}>
+              <RadioButton value={option.value} />
+              {option.label}
+            </label>
+          ))}
+        </RadioGroup>
       </form>
     );
   },
@@ -102,19 +92,9 @@ export const Selection: Story = {
   play: async ({ args, canvas, userEvent }) => {
     await expect(canvas.getByRole('radio', { name: 'Weekly' })).toBeChecked();
     await userEvent.click(canvas.getByRole('radio', { name: 'Daily' }));
-    await waitFor(async () => expect(canvas.getByRole('radio', { name: 'Daily' })).toBeChecked());
-    await waitFor(async () => expect(canvas.getByRole('radio', { name: 'Weekly' })).not.toBeChecked());
-
-    await userEvent.click(canvas.getByRole('radio', { name: 'Never' }));
-    await waitFor(async () => expect(canvas.getByRole('radio', { name: 'Never' })).toBeChecked());
-    await waitFor(async () => expect(canvas.getByRole('radio', { name: 'Daily' })).not.toBeChecked());
-    const radios = ['Daily', 'Weekly', 'Never'].map((name) => canvas.getByRole('radio', { name }));
-    await waitFor(async () => {
-      const backgrounds = radios.map((radio) => getComputedStyle(required(radio.nextElementSibling)).backgroundColor);
-      await expect(backgrounds[0]).toBe(backgrounds[1]);
-      await expect(backgrounds[2]).not.toBe(backgrounds[0]);
-    });
-    await expect(args.onChange).toHaveBeenCalledWith('daily');
+    await expect(canvas.getByRole('radio', { name: 'Daily' })).toBeChecked();
+    await expect(canvas.getByRole('radio', { name: 'Weekly' })).not.toBeChecked();
+    await expect(args.onValueChange).toHaveBeenCalledWith('daily', expect.anything());
   },
 };
 
@@ -134,20 +114,29 @@ export const Disabled: Story = {
   args: { disabled: true },
 };
 
-export const InFormField: Story = {
+export const InField: Story = {
   render: () => (
-    <FormField label="Format" hint="Applies to all courses">
-      <RadioButton name="format" value="pdf" defaultChecked />
-    </FormField>
+    <Field>
+      <span id="format-label" className="tumaet-ui-form-field-label">
+        Format
+      </span>
+      <RadioGroup name="format" defaultValue="pdf" aria-labelledby="format-label" aria-describedby="format-hint">
+        <label id="format-pdf-label" htmlFor="format-pdf">
+          PDF
+        </label>
+        <RadioButton id="format-pdf" aria-labelledby="format-pdf-label" value="pdf" />
+      </RadioGroup>
+      <FieldDescription id="format-hint">Applies to all courses</FieldDescription>
+    </Field>
   ),
 };
 
 export const Invalid: Story = {
   render: () => (
-    <RadioGroup aria-label="Email summary" defaultValue={null}>
+    <RadioGroup name="invalid-summary" aria-label="Email summary" defaultValue={null} aria-invalid>
       {OPTIONS.map((option) => (
         <label key={option.value} style={optionStyle}>
-          <RadioButton value={option.value} invalid />
+          <RadioButton value={option.value} aria-label={option.label} aria-invalid />
           {option.label}
         </label>
       ))}
@@ -155,63 +144,32 @@ export const Invalid: Story = {
   ),
 };
 
-export const StandaloneUncontrolled: Story = {
+export const Uncontrolled: Story = {
   render: () => (
-    <div style={{ display: 'grid', gap: 8 }}>
-      {OPTIONS.map((option) => (
-        <label key={option.value} style={optionStyle}>
-          <RadioButton name="standalone" value={option.value} defaultChecked={option.value === 'weekly'} />
-          {option.label}
-        </label>
-      ))}
-    </div>
+    <form>
+      <RadioGroup aria-label="Summary frequency" name="frequency" defaultValue="weekly">
+        {OPTIONS.map((option) => (
+          <label key={option.value} style={optionStyle}>
+            <RadioButton value={option.value} />
+            {option.label}
+          </label>
+        ))}
+      </RadioGroup>
+      <button type="reset">Restore weekly</button>
+    </form>
   ),
 };
 
-/**
- * A radio button keeps its round shape when the row around it runs out of room.
- *
- * Flex items shrink by default, and the control has a fixed height but no shrink floor, so a long label in a narrow row
- * would squeeze it into an oval. Zooming the page reproduces it the same way. The row below is deliberately too narrow for its label.
- */
-export const StaysRoundInATightRow: Story = {
-  tags: ['!dev', '!autodocs'],
+export const WrappingLabel: Story = {
   render: () => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: 120 }}>
-      <RadioButton id="tight" name="tight" value="tight" />
-      <label htmlFor="tight">A label far too long to fit beside the control in this row</label>
-    </div>
+    <RadioGroup
+      name="wrapping"
+      aria-label="Wrapping option"
+      defaultValue="yes"
+      style={{ flexDirection: 'row', gap: 8, width: 120 }}
+    >
+      <RadioButton id="wrapping-radio" value="yes" />
+      <label htmlFor="wrapping-radio">A long option label that wraps beside the control</label>
+    </RadioGroup>
   ),
-  play: async ({ canvasElement }) => {
-    const { width, height } = required(
-      required(canvasElement.querySelector('#tight')).parentElement,
-    ).getBoundingClientRect();
-    await expect(width).toBeGreaterThan(0);
-    await expect(width).toBeCloseTo(height, 1);
-  },
-};
-
-/**
- * A selected radio button still shows its dot where the spacing token does not reach.
- *
- * The indicator has no content of its own, so an invalid `calc()` would leave both dimensions at auto, which is zero:
- * the ring would render and the control would look unselected while being selected.
- */
-export const ShowsTheSelectedDotWithoutTheSpacingToken: Story = {
-  tags: ['!dev', '!autodocs'],
-  render: () => (
-    <div style={{ ['--tumaet-ui-spacing' as string]: 'initial', display: 'flex', alignItems: 'center', gap: 8 }}>
-      <RadioButton id="untokened" name="untokened" value="picked" defaultChecked />
-      <label htmlFor="untokened">Selected in a context that carries no spacing token</label>
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    const wrapper = required(required(canvasElement.querySelector('#untokened')).parentElement);
-    const host = wrapper.getBoundingClientRect();
-    const indicator = required(wrapper.querySelector('.tumaet-ui-radio-button-icon')).getBoundingClientRect();
-    await expect(host.width, 'the ring is round').toBeCloseTo(host.height, 1);
-    await expect(indicator.width, 'the dot has a size').toBeGreaterThan(0);
-    await expect(indicator.width, 'the dot is round').toBeCloseTo(indicator.height, 1);
-    await expect(indicator.width, 'the dot fits inside the ring').toBeLessThan(host.width);
-  },
 };

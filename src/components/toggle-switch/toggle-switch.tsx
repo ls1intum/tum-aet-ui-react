@@ -1,69 +1,28 @@
-import type { ChangeEvent, CSSProperties, InputHTMLAttributes, Ref } from 'react';
+import type { ComponentPropsWithRef } from 'react';
 import { cx } from '../../internal/cx';
-import { useControllable } from '../../internal/use-controllable';
-import { useFormFieldControl } from '../form-field/form-field';
 
-export interface ToggleSwitchProps extends Omit<
-  InputHTMLAttributes<HTMLInputElement>,
-  'type' | 'size' | 'role' | 'checked' | 'defaultChecked' | 'onChange' | 'className' | 'style'
-> {
-  /** State of a controlled switch. Omit it for an uncontrolled one. */
-  checked?: boolean;
-  /** Initial state of an uncontrolled switch. */
-  defaultChecked?: boolean;
-  /** Called with the new state and the originating event. */
-  onChange?: (checked: boolean, event: ChangeEvent<HTMLInputElement>) => void;
-  /** Marks the switch invalid (also set by an enclosing invalid FormField). */
-  invalid?: boolean;
-  /** Class of the wrapper element. */
-  className?: string;
-  /** Style of the wrapper element. */
-  style?: CSSProperties;
-  ref?: Ref<HTMLInputElement>;
-}
+export type ToggleSwitchProps = Omit<ComponentPropsWithRef<'input'>, 'type' | 'role' | 'children'>;
 
-/** On/off switch (`<input type="checkbox" role="switch">`). Needs an accessible name: `<label htmlFor>`, `aria-label` or `aria-labelledby`. */
-export function ToggleSwitch({
-  checked,
-  defaultChecked = false,
-  onChange,
-  invalid,
-  disabled,
-  className,
-  style,
-  ref,
-  id,
-  'aria-describedby': describedBy,
-  'aria-invalid': ariaInvalid,
-  ...rest
-}: ToggleSwitchProps) {
-  const control = useFormFieldControl({ id, invalid, 'aria-describedby': describedBy, 'aria-invalid': ariaInvalid });
-  const [isChecked, setChecked] = useControllable<boolean>(checked, defaultChecked);
+/** Native checkbox with switch semantics. className/style target the wrapper; other props/ref target the input. */
+export function ToggleSwitch({ className, style, readOnly = false, onClick, onChange, ...props }: ToggleSwitchProps) {
   return (
-    <span
-      className={cx('tumaet-ui-toggle-switch', className)}
-      style={style}
-      data-checked={isChecked}
-      data-disabled={disabled === true ? true : undefined}
-      data-invalid={control.invalid || undefined}
-    >
+    <span className={cx('tumaet-ui-toggle-switch', className)} style={style}>
       <input
-        {...rest}
-        ref={ref}
+        {...props}
         type="checkbox"
         role="switch"
-        id={control.id}
-        aria-describedby={control['aria-describedby']}
-        aria-invalid={control['aria-invalid']}
         className="tumaet-ui-toggle-switch-input"
-        checked={isChecked}
-        disabled={disabled}
-        onChange={(event) => {
-          setChecked(event.target.checked);
-          onChange?.(event.target.checked, event);
+        readOnly={readOnly}
+        aria-readonly={readOnly ? true : props['aria-readonly']}
+        onChange={readOnly ? undefined : onChange}
+        onClick={(event) => {
+          onClick?.(event);
+          if (readOnly) event.preventDefault();
         }}
       />
-      <span className="tumaet-ui-toggle-switch-handle" aria-hidden="true" />
+      <span className="tumaet-ui-toggle-switch-track" aria-hidden="true">
+        <span className="tumaet-ui-toggle-switch-handle" />
+      </span>
     </span>
   );
 }

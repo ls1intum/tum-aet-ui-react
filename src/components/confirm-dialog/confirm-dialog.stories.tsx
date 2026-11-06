@@ -6,7 +6,7 @@ import { ConfirmDialog, ConfirmProvider, useConfirm, type ConfirmationRequest } 
 interface ConfirmStoryArgs {
   /** Routes the request to the `ConfirmDialog` with the same `confirmKey`. */
   confirmKey?: string;
-  header: string;
+  title: string;
   message: string;
   acceptLabel: string;
   rejectLabel: string;
@@ -58,7 +58,7 @@ const meta = {
   title: 'Overlays/Confirm Dialog',
   component: ConfirmExample,
   args: {
-    header: 'Delete tutorial group?',
+    title: 'Delete tutorial group?',
     message: 'This action cannot be undone.',
     acceptLabel: 'Delete',
     rejectLabel: 'Cancel',
@@ -83,7 +83,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Imperative confirmation. Mount one `ConfirmProvider` and a `ConfirmDialog` (optionally with a `confirmKey`), then call `const confirm = useConfirm()` anywhere below: `await confirm({ header, message, acceptLabel, rejectLabel })` resolves to `true` when accepted and to `false` when rejected, dismissed with the close button or Escape, or replaced by a newer request with the same key. `accept`/`reject` callbacks run as well. The dialog is a `role="alertdialog"` described by the message; the message keeps its line breaks. Requests with different keys are independent.',
+          'Imperative confirmation. Mount one `ConfirmProvider` and a `ConfirmDialog` (optionally with a `confirmKey`), then call `const confirm = useConfirm()` anywhere below: `await confirm({ title, message, acceptLabel, rejectLabel })` resolves to `true` when accepted and to `false` when rejected, dismissed with the close button or Escape, or replaced by a newer request with the same key. Pending requests resolve false on provider unmount. The provider owns request lifetime, including keyed requests with no mounted dialog. `accept`/`reject` callbacks are awaited; callback errors reject the request promise and must be handled by the caller. The dialog is a `role="alertdialog"` described by the message; the message keeps its line breaks. Requests with different keys are independent.',
       },
     },
   },

@@ -1,330 +1,198 @@
-import {
-  useCallback,
-  useId,
-  useImperativeHandle,
-  useRef,
-  useState,
-  type HTMLAttributes,
-  type KeyboardEvent,
-  type Ref,
-} from 'react';
+import { createContext, useContext, type Key, type ReactNode } from 'react';
+import { Select as BaseSelect } from '@base-ui/react/select';
 import { cx } from '../../internal/cx';
-import { Floating } from '../../internal/floating';
+import { CheckIcon, ChevronDownIcon } from '../../internal/icons';
 import { useTranslate } from '../../internal/i18n';
-import { CheckIcon, ChevronDownIcon, XIcon } from '../../internal/icons';
-import { useControllable } from '../../internal/use-controllable';
-import { Listbox, optionId, type ListboxItem } from './listbox';
-import {
-  isPrintableKey,
-  navigate,
-  optionLabelOf,
-  optionValueOf,
-  toText,
-  useTypeahead,
-  valuesMatch,
-} from './use-listbox';
-import { useFormFieldControl } from '../form-field/form-field';
 
 export type SelectSize = 'small' | 'default' | 'large';
 
-export interface SelectProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onChange' | 'defaultValue' | 'placeholder'> {
-  /** The options: primitives, or objects read through `optionLabel` and `optionValue`. */
-  options?: readonly unknown[];
-  /** Property used as the visible label of object options. */
-  optionLabel?: string;
-  /** Property written as the value; omit it to use the option itself. */
-  optionValue?: string;
-  /** Selected value. Cleared with `null`. */
-  value?: unknown;
-  /** Initial value when the select is uncontrolled. */
-  defaultValue?: unknown;
-  /** Called with the new value (`null` after clearing). */
-  onChange?: (value: unknown) => void;
-  /** Text of the trigger while nothing is selected. */
-  placeholder?: string;
-  /** Disables the trigger; an open list closes. */
+export interface SelectOption<Value> {
+  /** Stable identity for the item and its rendered content, independent of order or serialization. */
+  key: Key;
+  value: Value;
+  label: ReactNode;
   disabled?: boolean;
-  /** Reports the control as required to assistive technology. */
-  required?: boolean;
-  /** Shows a button that clears the selection. */
-  showClear?: boolean;
-  /** Adds a search field above the list. */
-  filter?: boolean;
-  /** Comma-separated property names searched by the filter; defaults to the label. */
-  filterBy?: string;
-  /** Placeholder of the search field. */
-  filterPlaceholder?: string;
-  /** Accessible name of the search field. */
-  filterAriaLabel?: string;
-  /** Accessible name of the clear button. */
-  clearAriaLabel?: string;
-  /** Message shown when there are no options. */
-  emptyMessage?: string;
-  /** Height and font size of the trigger. */
-  size?: SelectSize;
-  /** Id of the trigger, so an external `<label for>` associates. */
-  id?: string;
-  /** Name of a hidden input that carries the value in a native form. */
-  name?: string;
-  /** Accessible name of the trigger and the list. */
-  'aria-label'?: string;
-  'aria-labelledby'?: string;
-  'aria-describedby'?: string;
-  /** Marks the control as invalid and draws the danger border. */
-  'aria-invalid'?: boolean | 'true' | 'false';
-  /** Ref of the root element. */
-  ref?: Ref<HTMLDivElement>;
 }
 
-const NAVIGATION_KEYS = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
+export type SelectProps<Value, Multiple extends boolean = false> = Omit<
+  BaseSelect.Root.Props<NoInfer<Value>, Multiple>,
+  'items' | 'value' | 'defaultValue'
+> & {
+  /** The checked collection rendered by SelectList. JSX descendants are not typechecked by the root. */
+  items: ReadonlyArray<SelectOption<Value>>;
+  /** Controlled selection. Reset policy belongs to the caller, including native form resets. */
+  value: Multiple extends true ? ReadonlyArray<NoInfer<Value>> : NoInfer<Value> | null;
+  /** Custom item content; values and disabled state still come from the root-owned collection. */
+  renderItem?: (item: SelectOption<Value>, index: number) => ReactNode;
+};
 
-/** Single-value select with a listbox popup, optional filter and clear button. */
-export function Select({
-  options = [],
-  optionLabel,
-  optionValue,
+const ItemsContext = createContext<ReactNode>(null);
+
+/** Controlled selection; Base UI owns open state and interaction. Single empties are null; multiple empties are []. */
+export function Select<Value, Multiple extends boolean = false>({
+  items,
+  renderItem,
+  children,
   value,
-  defaultValue,
-  onChange,
-  placeholder,
-  disabled = false,
-  required = false,
-  showClear = false,
-  filter = false,
-  filterBy,
-  filterPlaceholder,
-  filterAriaLabel,
-  clearAriaLabel,
-  emptyMessage,
-  size = 'default',
-  id: ownId,
-  name,
-  'aria-label': ariaLabel,
-  'aria-labelledby': ariaLabelledBy,
-  'aria-describedby': ownDescribedBy,
-  'aria-invalid': ownInvalid,
-  className,
-  ref,
-  ...rest
-}: SelectProps) {
-  const t = useTranslate();
-  // Moves focus to the search field when the popup opens and mounts it.
-  const focusOnMount = useCallback((node: HTMLInputElement | null) => node?.focus(), []);
-  const generatedId = useId();
-  const field = useFormFieldControl({ id: ownId, 'aria-describedby': ownDescribedBy, 'aria-invalid': ownInvalid });
-  const ariaDescribedBy = field['aria-describedby'];
-  const ariaInvalid = field['aria-invalid'];
-  const triggerId = ownId ?? field.id;
-  const listboxId = `${generatedId}-listbox`;
-  const root = useRef<HTMLDivElement | null>(null);
-  const trigger = useRef<HTMLButtonElement | null>(null);
-  const typeahead = useTypeahead();
-  // A stable ref: Floating measures the anchor in a layout effect that runs before an inline callback ref is re-attached.
-  useImperativeHandle(ref, () => {
-    if (root.current === null) throw new Error('Select root element is not mounted');
-    return root.current;
-  }, []);
-
-  const [current, setCurrent] = useControllable<unknown>(value, defaultValue, onChange);
-  const [openState, setOpenState] = useState(false);
-  const [active, setActive] = useState(-1);
-  const [query, setQuery] = useState('');
-  const open = openState && !disabled;
-  if (disabled && openState) {
-    // Disabling while open closes the list for good, so it does not reappear when the select is enabled again.
-    setOpenState(false);
-    setQuery('');
-  }
-
-  const hasValue = current !== undefined && current !== null;
-  const isSelected = (option: unknown) => hasValue && valuesMatch(optionValueOf(option, optionValue), current);
-  const selectedOption = hasValue ? options.find(isSelected) : undefined;
-  const hasSelection = selectedOption !== undefined;
-
-  const filtering = filter && query.trim().length > 0;
-  const keys = filterBy
-    ?.split(',')
-    .map((k) => k.trim())
-    .filter(Boolean);
-  const fields = (option: unknown): string[] =>
-    keys === undefined || keys.length === 0 || option === null || typeof option !== 'object'
-      ? [optionLabelOf(option, optionLabel)]
-      : keys.map((k) => toText((option as Record<string, unknown>)[k]));
-  const needle = query.trim().toLocaleLowerCase();
-  const visible = filtering
-    ? options.filter((o) => fields(o).some((f) => f.toLocaleLowerCase().includes(needle)))
-    : options;
-  // Keeps aria-activedescendant valid when the list shrinks, and activates the first option of an open list that was empty.
-  const activeIndex = open && active < 0 && visible.length > 0 ? 0 : Math.min(active, visible.length - 1);
-
-  const openPanel = (initial?: { index?: number; query?: string }) => {
-    if (open || disabled) return;
-    const selectedIndex = visible.findIndex(isSelected);
-    let fallbackIndex = -1;
-    if (selectedIndex >= 0) fallbackIndex = selectedIndex;
-    else if (visible.length > 0) fallbackIndex = 0;
-    setActive(initial?.index ?? fallbackIndex);
-    setQuery(initial?.query ?? '');
-    setOpenState(true);
-  };
-  const close = (restoreFocus = true) => {
-    typeahead.reset();
-    setOpenState(false);
-    setQuery('');
-    if (restoreFocus) trigger.current?.focus();
-  };
-  const commit = (next: unknown) => {
-    setCurrent(next);
-    close();
-  };
-  const selectAt = (index: number) => {
-    if (index >= 0 && index < visible.length) commit(optionValueOf(visible[index], optionValue));
-  };
-  const clear = () => {
-    setCurrent(null);
-    trigger.current?.focus();
-  };
-
-  const labels = visible.map((o) => optionLabelOf(o, optionLabel));
-
-  /** Keys of the trigger, and, while filtering, of the search field (where Home/End and characters stay with the text). */
-  const onKeyDown = (event: KeyboardEvent, inFilter: boolean) => {
-    if (disabled) return;
-    const { key } = event;
-    if (!open) {
-      if (key === 'Enter' || key === ' ' || key === 'ArrowDown' || key === 'ArrowUp') {
-        event.preventDefault();
-        openPanel();
-      } else if (key === 'Home' || key === 'End') {
-        event.preventDefault();
-        openPanel({ index: key === 'Home' ? 0 : visible.length - 1 });
-      } else if (isPrintableKey(event)) {
-        if (filter) {
-          // The character belongs in the search field that takes focus.
-          event.preventDefault();
-          openPanel({ query: key });
-        } else {
-          const selectedIndex = visible.findIndex(isSelected);
-          const start = selectedIndex >= 0 ? selectedIndex : 0;
-          const match = typeahead.match(key, labels, start);
-          openPanel({ index: match >= 0 ? match : undefined });
-        }
-      }
-      return;
-    }
-    if (key === 'Enter' || (key === ' ' && !inFilter)) {
-      event.preventDefault();
-      selectAt(activeIndex);
-    } else if (key === 'Tab') {
-      if (activeIndex >= 0) selectAt(activeIndex);
-      else close();
-    } else if (NAVIGATION_KEYS.includes(key) && !(inFilter && (key === 'Home' || key === 'End'))) {
-      const next = navigate(key, activeIndex, visible.length);
-      event.preventDefault();
-      if (next !== undefined) setActive(next);
-    } else if (!inFilter && isPrintableKey(event)) {
-      const match = typeahead.match(key, labels, activeIndex);
-      if (match >= 0) setActive(match);
-    }
-  };
-
-  const items: ListboxItem[] = visible.map((option, index) => ({
-    key: index,
-    selected: isSelected(option),
-    content: (
-      <>
-        <span className="tumaet-ui-listbox-option-label">{optionLabelOf(option, optionLabel)}</span>
-        {isSelected(option) && <CheckIcon className="tumaet-ui-select-check" />}
-      </>
-    ),
-  }));
-  const activeId = open && activeIndex >= 0 ? optionId(listboxId, activeIndex) : undefined;
-  const showClearButton = showClear && hasSelection && !disabled;
-  const filterLabel = filterAriaLabel ?? t('tumAetUi.select.filter');
-
+  multiple,
+  itemToStringLabel,
+  ...props
+}: SelectProps<Value, Multiple>) {
+  // The wrapper excludes null in multiple mode; TypeScript cannot reduce this narrower conditional
+  // to Base UI's input type until Multiple is known, hence the value cast below.
   return (
-    <div
-      {...rest}
-      ref={root}
-      className={cx('tumaet-ui-select', className)}
-      data-size={size}
-      data-open={open || undefined}
+    <BaseSelect.Root<Value, Multiple>
+      {...props}
+      multiple={multiple}
+      value={value as BaseSelect.Root.Props<Value, Multiple>['value']}
+      items={items}
+      itemToStringLabel={itemToStringLabel}
     >
-      <button
-        ref={trigger}
-        type="button"
-        id={triggerId}
-        role="combobox"
-        aria-haspopup="listbox"
-        aria-autocomplete="none"
-        aria-expanded={open}
-        aria-controls={open ? listboxId : undefined}
-        aria-activedescendant={open && !filter ? activeId : undefined}
-        aria-label={ariaLabel}
-        aria-labelledby={ariaLabelledBy}
-        aria-describedby={ariaDescribedBy}
-        aria-invalid={ariaInvalid}
-        aria-required={required || undefined}
-        disabled={disabled}
-        className="tumaet-ui-select-trigger"
-        data-invalid={ariaInvalid === true || ariaInvalid === 'true' || undefined}
-        data-clearable={showClearButton || undefined}
-        onClick={() => (open ? close() : openPanel())}
-        onKeyDown={(event) => onKeyDown(event, false)}
+      <ItemsContext
+        value={items.map((item, index) => (
+          <SelectItem
+            key={item.key}
+            value={item.value}
+            disabled={item.disabled}
+            label={itemToStringLabel?.(item.value) ?? (typeof item.label === 'string' ? item.label : undefined)}
+          >
+            <SelectItemText>{renderItem ? renderItem(item, index) : item.label}</SelectItemText>
+            <SelectItemIndicator>
+              <CheckIcon />
+            </SelectItemIndicator>
+          </SelectItem>
+        ))}
       >
-        <span className="tumaet-ui-select-value" data-placeholder={!hasSelection || undefined}>
-          {hasSelection ? optionLabelOf(selectedOption, optionLabel) : placeholder}
-        </span>
-      </button>
-      {name !== undefined && name !== '' ? (
-        <input type="hidden" name={name} value={hasSelection ? toText(current) : ''} disabled={disabled} />
-      ) : null}
-      <span className="tumaet-ui-select-chevron" aria-hidden="true">
+        {children}
+      </ItemsContext>
+    </BaseSelect.Root>
+  );
+}
+
+export type SelectTriggerProps = BaseSelect.Trigger.Props & { size?: SelectSize };
+export function SelectTrigger({ className, size = 'default', children, ...props }: SelectTriggerProps) {
+  return (
+    <BaseSelect.Trigger
+      {...props}
+      data-size={size}
+      className={(state) =>
+        cx('tumaet-ui-select-trigger', typeof className === 'function' ? className(state) : className)
+      }
+    >
+      {children}
+      <BaseSelect.Icon className="tumaet-ui-select-chevron">
         <ChevronDownIcon />
-      </span>
-      {showClearButton ? (
-        <button
-          type="button"
-          className="tumaet-ui-select-clear"
-          aria-label={clearAriaLabel ?? t('tumAetUi.select.clear')}
-          onClick={clear}
-        >
-          <XIcon />
-        </button>
-      ) : null}
-      <Floating anchor={root} open={open} matchWidth onDismiss={() => close()} className="tumaet-ui-select-panel">
-        {filter ? (
-          <div className="tumaet-ui-select-filter-wrapper">
-            <input
-              type="text"
-              ref={focusOnMount}
-              autoComplete="off"
-              className="tumaet-ui-select-filter"
-              value={query}
-              placeholder={filterPlaceholder ?? t('tumAetUi.select.filter')}
-              aria-label={filterLabel}
-              aria-controls={listboxId}
-              aria-activedescendant={activeId}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                // The previous active option may have been filtered away: start again at the top.
-                setActive(0);
-              }}
-              onKeyDown={(event) => onKeyDown(event, true)}
-            />
-          </div>
-        ) : null}
-        <Listbox
-          id={listboxId}
-          items={items}
-          activeIndex={activeIndex}
-          onActivate={setActive}
-          onSelect={selectAt}
-          emptyText={filtering ? t('tumAetUi.select.noResults') : (emptyMessage ?? t('tumAetUi.select.empty'))}
-          aria-label={ariaLabel}
-          aria-labelledby={ariaLabel !== undefined && ariaLabel !== '' ? undefined : ariaLabelledBy}
-        />
-      </Floating>
-    </div>
+      </BaseSelect.Icon>
+    </BaseSelect.Trigger>
+  );
+}
+
+export type SelectValueProps = BaseSelect.Value.Props;
+export function SelectValue({ className, ...props }: SelectValueProps) {
+  return (
+    <BaseSelect.Value
+      {...props}
+      className={(state) =>
+        cx('tumaet-ui-select-value', typeof className === 'function' ? className(state) : className)
+      }
+    />
+  );
+}
+
+export type SelectPortalProps = BaseSelect.Portal.Props;
+export function SelectPortal({ className, ...props }: SelectPortalProps) {
+  return (
+    <BaseSelect.Portal
+      {...props}
+      className={(state) =>
+        cx('tumaet-ui-select-portal', typeof className === 'function' ? className(state) : className)
+      }
+    />
+  );
+}
+
+export type SelectPositionerProps = BaseSelect.Positioner.Props;
+export function SelectPositioner({
+  className,
+  alignItemWithTrigger = false,
+  sideOffset = 4,
+  ...props
+}: SelectPositionerProps) {
+  return (
+    <BaseSelect.Positioner
+      {...props}
+      alignItemWithTrigger={alignItemWithTrigger}
+      sideOffset={sideOffset}
+      className={(state) =>
+        cx('tumaet-ui-select-positioner', typeof className === 'function' ? className(state) : className)
+      }
+    />
+  );
+}
+
+export type SelectPopupProps = BaseSelect.Popup.Props;
+export function SelectPopup({ className, ...props }: SelectPopupProps) {
+  return (
+    <BaseSelect.Popup
+      {...props}
+      className={(state) =>
+        cx('tumaet-ui-select-panel', typeof className === 'function' ? className(state) : className)
+      }
+    />
+  );
+}
+
+export type SelectListProps = Omit<BaseSelect.List.Props, 'children'> & { emptyMessage?: ReactNode };
+/** Renders the root-owned typed collection. Use SelectItem directly only for independently typed compositions. */
+export function SelectList({ className, emptyMessage, ...props }: SelectListProps) {
+  const items = useContext(ItemsContext);
+  const t = useTranslate();
+  return (
+    <BaseSelect.List
+      {...props}
+      className={(state) => cx('tumaet-ui-listbox', typeof className === 'function' ? className(state) : className)}
+    >
+      {Array.isArray(items) && items.length === 0 ? (
+        <div className="tumaet-ui-listbox-empty">{emptyMessage ?? t('tumAetUi.select.empty')}</div>
+      ) : (
+        items
+      )}
+    </BaseSelect.List>
+  );
+}
+
+export type SelectItemProps<Value = unknown> = Omit<BaseSelect.Item.Props, 'value'> & { value: Value };
+export function SelectItem<Value>({ className, ...props }: SelectItemProps<Value>) {
+  return (
+    <BaseSelect.Item
+      {...props}
+      className={(state) =>
+        cx('tumaet-ui-listbox-option', typeof className === 'function' ? className(state) : className)
+      }
+    />
+  );
+}
+
+export type SelectItemTextProps = BaseSelect.ItemText.Props;
+export function SelectItemText({ className, ...props }: SelectItemTextProps) {
+  return (
+    <BaseSelect.ItemText
+      {...props}
+      className={(state) =>
+        cx('tumaet-ui-listbox-option-label', typeof className === 'function' ? className(state) : className)
+      }
+    />
+  );
+}
+
+export type SelectItemIndicatorProps = BaseSelect.ItemIndicator.Props;
+export function SelectItemIndicator({ className, ...props }: SelectItemIndicatorProps) {
+  return (
+    <BaseSelect.ItemIndicator
+      {...props}
+      className={(state) =>
+        cx('tumaet-ui-select-check', typeof className === 'function' ? className(state) : className)
+      }
+    />
   );
 }

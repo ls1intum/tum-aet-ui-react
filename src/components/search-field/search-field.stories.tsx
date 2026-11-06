@@ -12,9 +12,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Text field (`type="search"`) for filtering a view: a leading magnifier and a clear button that appears once there is a term. ' +
-          '`onChange` fires on every keystroke, so debounce in the consumer if the term drives a request. The clear button empties the field and returns focus to it. ' +
-          'The placeholder defaults to the translated "Search" and is also the accessible name, unless `aria-label`, `aria-labelledby` or an enclosing `FormField` label names it.',
+          'Controlled search term with a clear button. onValueChange reports typing and clearing; the caller owns query/reset policy and request debouncing. Native props/ref target the search input; className/style target its wrapper.',
       },
     },
   },
@@ -27,21 +25,21 @@ const meta = {
   argTypes: {
     size: { control: 'inline-radio', options: ['small', 'default', 'large'] },
   },
-  render: function Render({ value, onChange, ...args }) {
-    const [term, setTerm] = useState(value ?? '');
+  render: function Render({ value, onValueChange, ...args }) {
+    const [term, setTerm] = useState(value);
     const [seen, setSeen] = useState(value);
     if (seen !== value) {
       // The Controls panel changed the arg: follow it.
       setSeen(value);
-      setTerm(value ?? '');
+      setTerm(value);
     }
     return (
       <SearchField
         {...args}
         value={term}
-        onChange={(next) => {
+        onValueChange={(next) => {
           setTerm(next);
-          onChange?.(next);
+          onValueChange?.(next);
         }}
       />
     );
@@ -88,17 +86,23 @@ export const CustomPlaceholder: Story = {
 };
 
 export const InFormField: Story = {
-  render: () => (
-    <FormField label="Tutorial group" hint="Search by name or room" style={{ width: 'min(24rem, 100%)' }}>
-      <SearchField />
-    </FormField>
-  ),
+  render: function LabeledSearch() {
+    const [value, setValue] = useState('');
+    return (
+      <FormField label="Tutorial group" hint="Search by name or room" style={{ width: 'min(24rem, 100%)' }}>
+        {(control) => <SearchField {...control} value={value} onValueChange={setValue} />}
+      </FormField>
+    );
+  },
 };
 
 export const RightToLeft: Story = {
-  render: (args) => (
-    <div dir="rtl">
-      <SearchField {...args} defaultValue="Garching" value={undefined} />
-    </div>
-  ),
+  render: function RtlSearch(args) {
+    const [value, setValue] = useState('Garching');
+    return (
+      <div dir="rtl">
+        <SearchField {...args} value={value} onValueChange={setValue} />
+      </div>
+    );
+  },
 };

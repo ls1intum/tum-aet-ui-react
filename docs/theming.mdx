@@ -4,44 +4,109 @@ import { Meta } from '@storybook/addon-docs/blocks';
 
 # Theming
 
-## Dark mode
+Import `@tumaet/ui-react/styles.css` once. It contains all tokens, shared base rules and component styles in the `tumaet-ui` cascade layer, ordered `tokens`, `base`, `components`. The export path and all `--tumaet-ui-*` names are unchanged. See **Foundation/Theming** for examples.
 
-Set `data-theme="dark"` on `<html>` to use the dark theme and remove it (or set `light`) to go back. The theme also sets the matching CSS `color-scheme`. Use the toolbar of this Storybook to switch.
+## Cascade and application overrides
 
-```ts
-document.documentElement.dataset.theme = 'dark';
+Declare the layer order **before any stylesheet imports**. For plain CSS:
+
+```css
+@layer reset, tumaet-ui, app;
+@import url('./reset.css') layer(reset);
+@import url('@tumaet/ui-react/styles.css');
+@import url('./app.css') layer(app);
 ```
+
+For an application already using Tailwind 4, put this at the start of its CSS entry:
+
+```css
+@layer theme, base, tumaet-ui, components, utilities;
+@import 'tailwindcss';
+@import '@tumaet/ui-react/styles.css';
+```
+
+Tailwind's reset stays below the library and its components/utilities stay above it. No Tailwind dependency or token-to-utility mapping is shipped by the library. Bundlers must resolve the package imports as usual.
+
+Normal unlayered application rules win over all layered library rules, regardless of specificity or import order. Later layers win over earlier ones. Place resets in a lower layer: an **unlayered reset also wins** and can remove component borders, backgrounds or focus outlines. The library uses no `!important` declarations; CSS reverses layer priority for important declarations, so avoid them for overrides.
+
+Prefer variants and tokens for appearance. Use `className` for layout; a low-specificity application class can now set a component's width or margin without a specificity contest. This is an intentional change from the former unlayered component rules. The old `tumaet-ui-theme` layer is replaced by `tumaet-ui.tokens`; update any application layer-order declarations that named it.
+
+## Light, dark and nested themes
+
+Light is the default, including when the OS prefers dark. There is no automatic OS theme switch or JavaScript theme manager. Set an explicit marker on `html` for a page or on a container for a subtree:
+
+```html
+<html data-theme="dark">
+  <!-- .dark is an equivalent alias; .light is also supported. -->
+</html>
+```
+
+Each marker sets the complete colour palette and matching `color-scheme`. Themes inherit through the DOM; an inner explicit theme replaces an outer one, so light → dark → light and dark → light → dark both work. Theme markers set tokens, not background/foreground styles on arbitrary containers. Paint application surfaces with those tokens:
+
+```css
+.surface {
+  color: var(--tumaet-ui-text-color);
+  background: var(--tumaet-ui-content-background);
+}
+```
+
+```html
+<div data-theme="dark" class="surface">
+  Dark content
+  <div class="light surface">Light content inside it</div>
+</div>
+```
+
+On the **same element**, valid `data-theme="light|dark"` wins over either class alias. If both `.light` and `.dark` are present without a valid `data-theme`, light wins. Other attribute values have no theme meaning. An explicit child marker always establishes its own theme, regardless of the ancestor's marker type. Selectors use `:where()` so root defaults never out-rank an explicit root theme or application rules.
 
 ## Overriding tokens
 
-The defaults live in a low-priority cascade layer. Override a custom property in an unlayered stylesheet on the document element; components and popups inherit it. Supply a light and a dark value when you change colours.
+Override tokens on `:root` for the page, or on a particular theme/surface for a subtree. Unlayered rules or a layer above `tumaet-ui` work:
 
 ```css
-:root,
-[data-theme='light'] {
+:root {
+  --tumaet-ui-radius-md: 0.5rem;
+}
+
+/* Reapply colour overrides at each explicit theme boundary. */
+:where(:root, [data-theme='light'], .light:not([data-theme='dark'])) {
   --tumaet-ui-primary-color: #0065bd;
 }
-[data-theme='dark'] {
+:where([data-theme='dark'], .dark:not(.light, [data-theme='light'])) {
   --tumaet-ui-primary-color: #64a0c8;
 }
 ```
 
-## Tokens
+A declaration directly on a child wins over an inherited value, even when the parent's declaration is unlayered. Explicit theme boundaries redeclare the palette (and light boundaries also redeclare the shared defaults, as before). Override each relevant boundary if a custom token must survive nesting. Changing just `color-scheme` does not select a different palette.
 
-| Group          | Custom properties                                                                                                                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Spacing        | `--tumaet-ui-spacing` (0.25rem; components use multiples)                                                                                                                                                  |
-| Type           | `--tumaet-ui-font-family`, `--tumaet-ui-font-size-{xs,sm,base,lg,xl}`, `--tumaet-ui-line-height-*`                                                                                                         |
-| Shape          | `--tumaet-ui-radius-{sm,md,xl,2xl}`                                                                                                                                                                        |
-| Elevation      | `--tumaet-ui-shadow-{xs,sm,md,lg,xl}`                                                                                                                                                                      |
-| Brand          | `--tumaet-ui-primary-color`, `--tumaet-ui-primary-contrast-color`, `--tumaet-ui-accent-color`, `--tumaet-ui-focus-color`                                                                                   |
-| Text           | `--tumaet-ui-text-color`, `--tumaet-ui-text-hover-color`, `--tumaet-ui-muted-color`, `--tumaet-ui-disabled-color`                                                                                          |
-| Backgrounds    | `--tumaet-ui-content-background`, `--tumaet-ui-control-background`, `--tumaet-ui-overlay-background`, `--tumaet-ui-hover-background`, `--tumaet-ui-disabled-background`, `--tumaet-ui-contrast-background` |
-| Borders        | `--tumaet-ui-border-color`, `--tumaet-ui-control-border-color`, `--tumaet-ui-control-border-hover-color`                                                                                                   |
-| Highlight      | `--tumaet-ui-highlight-color`, `--tumaet-ui-highlight-background`, `--tumaet-ui-highlight-focus-background`                                                                                                |
-| States         | `--tumaet-ui-state-{danger,success,warning,info}`, with `-contrast` and `-foreground` variants                                                                                                             |
-| Table, tooltip | `--tumaet-ui-table-striped-background`, `--tumaet-ui-tooltip-background`, `--tumaet-ui-tooltip-color`                                                                                                      |
+Token groups remain spacing (`--tumaet-ui-spacing`), type (`font-*`, `line-height-*`), shape (`radius-*`), elevation (`shadow-*`), brand (`primary-*`, `accent-*`, `focus-*`), text, backgrounds, borders, highlight, states (`state-{danger,success,warning,info}` and their contrast/foreground pairs), table and tooltip. The complete values are in `src/styles/themes.css`; light and dark colours are unchanged. Check contrast after customisation: 4.5:1 for normal text and 3:1 for interface parts against their backgrounds.
 
-The full list with the light and dark values is in `src/styles/themes.css`.
+## Scoped themes, direction and portals
 
-When you change a colour, check the contrast: text needs 4.5:1 and interface parts such as borders and focus rings need 3:1 against their background, in both themes.
+Portals inherit CSS tokens and DOM direction from their destination, not their trigger. Set a Portal part's `container` to a host inside the intended theme and outside clipping containers. Default body portals use the page theme. No token copying or theme synchronization is required.
+
+`DirectionProvider` exposes Base UI's direction context for keyboard behavior and logical positioning. Set matching HTML `dir` on the themed boundary or portal host as well: React direction context does not establish DOM inheritance.
+
+```tsx
+const [portalHost, setPortalHost] = useState<HTMLDivElement | null>(null);
+
+<DirectionProvider direction="rtl">
+  <section data-theme="dark" dir="rtl">
+    <div ref={setPortalHost} />
+    <Popover>
+      <PopoverTrigger>Settings</PopoverTrigger>
+      {portalHost && (
+        <PopoverPortal container={portalHost}>
+          <PopoverPositioner>
+            <PopoverPopup>Settings content</PopoverPopup>
+          </PopoverPositioner>
+        </PopoverPortal>
+      )}
+    </Popover>
+  </section>
+</DirectionProvider>;
+```
+
+## Maintaining the CSS entry
+
+`src/styles/index.css` is the shared layered entry for Storybook, the playground and the published stylesheet. Add new component CSS imports there once, in alphabetical order. Vite builds that entry into `dist/styles.css`, resolving its local layered imports. Component source CSS remains plain and unwrapped. Do not import those raw styles separately in an application, as that bypasses the layer contract.

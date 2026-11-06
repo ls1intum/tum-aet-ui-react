@@ -173,10 +173,34 @@
   color: var(--tumaet-ui-state-danger);
 }
 
-/* popup panel: sits on top of the shared .tumaet-ui-overlay look */
+.tumaet-ui-date-picker-positioner {
+  z-index: 1100;
+}
+
 .tumaet-ui-date-picker-panel {
+  overflow: auto;
+
+  box-sizing: border-box;
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI's public collision measurement. */
+  max-width: var(--available-width);
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI's public collision measurement. */
+  max-height: var(--available-height);
   padding: calc(var(--tumaet-ui-spacing) * 3);
+  border: 1px solid var(--tumaet-ui-border-color);
+  border-radius: var(--tumaet-ui-radius-md);
+
+  font-family: var(--tumaet-ui-font-family);
+  font-size: var(--tumaet-ui-font-size-base);
+  line-height: var(--tumaet-ui-line-height-base);
+  color: var(--tumaet-ui-text-color);
+
+  background: var(--tumaet-ui-overlay-background);
   box-shadow: var(--tumaet-ui-shadow-lg);
+}
+
+.tumaet-ui-date-picker-panel:focus-visible {
+  outline: 2px solid var(--tumaet-ui-focus-color);
+  outline-offset: 2px;
 }
 
 .tumaet-ui-date-picker-actions {
@@ -239,6 +263,7 @@
 .tumaet-ui-calendar-nav:focus-visible,
 .tumaet-ui-calendar-day:focus-visible {
   outline: 2px solid var(--tumaet-ui-focus-color);
+  outline-offset: 2px;
 }
 
 .tumaet-ui-calendar-grid {

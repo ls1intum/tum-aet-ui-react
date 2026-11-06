@@ -1,229 +1,191 @@
-import { render, screen } from '@testing-library/react';
+import { createRef } from 'react';
+import { renderToString } from 'react-dom/server';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../test-utils';
-import { Checkbox } from '../checkbox/checkbox';
-import { Input } from '../input/input';
+import { Input, Textarea } from '../input/input';
 import { InputNumber } from '../input-number/input-number';
-import { Select } from '../select/select';
-import { MultiSelect } from '../multi-select/multi-select';
-import { Autocomplete } from '../autocomplete/autocomplete';
-import { DatePicker } from '../date-picker/date-picker';
-import { FormField, useFormFieldContext } from './form-field';
+import { Field, FieldDescription, FieldError, FieldLabel, FormField } from './form-field';
 
 describe('FormField', () => {
-  it('labels the control and shows the required marker', () => {
+  it('supplies native label associations and a decorative required marker', async () => {
     render(
       <FormField label="Login" required>
-        <Input />
+        {(control) => <Input {...control} />}
       </FormField>,
     );
-    const input = screen.getByLabelText(/Login/);
-    expect(input.tagName).toBe('INPUT');
+    const input = screen.getByRole('textbox', { name: /Login/ });
     expect(screen.getByText('*')).toHaveAttribute('aria-hidden', 'true');
-  });
-
-  it('describes by the hint, then by the error while invalid', () => {
-    const { rerender } = render(
-      <FormField label="Login" hint="Your id" error="Required">
-        <Input />
-      </FormField>,
-    );
-    const input = screen.getByLabelText('Login');
-    expect(input).toHaveAccessibleDescription('Your id');
-    expect(input).not.toHaveAttribute('aria-invalid');
-    expect(screen.getByRole('alert', { hidden: true })).not.toBeVisible();
-
-    rerender(
-      <FormField label="Login" hint="Your id" error="Required" invalid>
-        <Input />
-      </FormField>,
-    );
-    expect(input).toHaveAccessibleDescription('Required');
-    expect(input).toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByRole('alert')).toHaveTextContent('Required');
-    expect(screen.queryByText('Your id')).not.toBeInTheDocument();
-  });
-
-  it('adopts an own id and an explicit controlId, and merges aria-describedby', () => {
-    render(
-      <>
-        <FormField label="A">
-          <Input id="own" />
-        </FormField>
-        <FormField label="B" controlId="explicit">
-          <Input />
-        </FormField>
-        <FormField label="C" hint="hint">
-          <Input aria-describedby="extra" />
-        </FormField>
-      </>,
-    );
-    expect(screen.getByLabelText('A')).toHaveAttribute('id', 'own');
-    expect(screen.getByLabelText('B')).toHaveAttribute('id', 'explicit');
-    expect(screen.getByLabelText('C').getAttribute('aria-describedby')).toMatch(/^extra .+-hint$/);
-  });
-
-  it('wires other controls too', () => {
-    render(
-      <>
-        <FormField label="Points" hint="h">
-          <InputNumber />
-        </FormField>
-        <FormField label="Agree">
-          <Checkbox />
-        </FormField>
-      </>,
-    );
-    expect(screen.getByRole('spinbutton', { name: 'Points' })).toHaveAccessibleDescription('h');
-    expect(screen.getByRole('checkbox', { name: 'Agree' })).toBeInTheDocument();
-  });
-
-  it('focuses the control by keyboard and label click', async () => {
-    render(
-      <FormField label="Login">
-        <Input />
-      </FormField>,
-    );
+    expect(input).not.toBeRequired();
+    expect(screen.getByText('Login')).toHaveAttribute('for', input.id);
     await userEvent.click(screen.getByText('Login'));
-    expect(screen.getByLabelText('Login')).toHaveFocus();
+    expect(input).toHaveFocus();
   });
 
-  it('has no axe violations', async () => {
-    const { container } = render(
-      <FormField label="Login" hint="Your id" required>
-        <Input />
-      </FormField>,
-    );
-    await expectNoA11yViolations(container);
-    const { container: invalidContainer } = render(
-      <FormField label="Mail" invalid error="Bad">
-        <Input />
-      </FormField>,
-    );
-    await expectNoA11yViolations(invalidContainer);
-  });
-
-  it('renders no required marker, hint element or description by default', () => {
-    const { container } = render(
-      <FormField label="Login">
-        <Input />
-      </FormField>,
-    );
-    expect(container.querySelector('.tumaet-ui-form-field-required')).toBeNull();
-    expect(container.querySelector('.tumaet-ui-form-field-hint')).toBeNull();
-    expect(screen.getByLabelText('Login')).not.toHaveAttribute('aria-describedby');
-    expect(screen.getByLabelText('Login').id).toBeTruthy();
-  });
-
-  it('ignores a blank hint', () => {
-    const { container } = render(
-      <FormField label="Login" hint="   ">
-        <Input />
-      </FormField>,
-    );
-    expect(container.querySelector('.tumaet-ui-form-field-hint')).toBeNull();
-  });
-
-  it('labels an own id over the generated one, and prefers an explicit controlId over both', () => {
-    render(
-      <>
-        <FormField label="A">
-          <Input id="own" />
-        </FormField>
-        <FormField label="B" controlId="login">
-          <Input id="own-b" />
-        </FormField>
-      </>,
-    );
-    expect(screen.getByText('A').closest('label')).toHaveAttribute('for', 'own');
-    expect(screen.getByText('B').closest('label')).toHaveAttribute('for', 'login');
-    expect(screen.getByLabelText('B')).toHaveAttribute('id', 'login');
-  });
-
-  it('keeps the error region in the DOM, hidden and out of the description while valid', () => {
-    const { container } = render(
-      <FormField label="Login" error="Login is required">
-        <Input />
-      </FormField>,
-    );
-    const error = container.querySelector<HTMLElement>('.tumaet-ui-form-field-error')!;
-    expect(error).toHaveAttribute('role', 'alert');
-    expect(error.hidden).toBe(true);
-    expect(screen.getByLabelText('Login')).not.toHaveAttribute('aria-describedby');
-  });
-
-  it('passes the invalid state to the control and removes it again', () => {
-    const { rerender } = render(
-      <FormField label="Login" invalid>
-        <Input />
-      </FormField>,
-    );
-    const input = screen.getByLabelText('Login');
-    expect(input).toHaveAttribute('data-invalid');
-    expect(input).toHaveAttribute('aria-invalid', 'true');
-    rerender(
-      <FormField label="Login">
-        <Input />
-      </FormField>,
-    );
-    expect(input).not.toHaveAttribute('data-invalid');
-    expect(input).not.toHaveAttribute('aria-invalid');
-  });
-
-  it('focuses a control the browser would not focus itself when the label is clicked', async () => {
-    function Custom() {
-      const field = useFormFieldContext();
+  it('replaces the hint with the caller error and keeps the generated control id stable', () => {
+    function Example({ invalid = false }: { invalid?: boolean }) {
       return (
-        <div
-          id={field?.controlId}
-          tabIndex={0}
-          role="combobox"
-          aria-expanded="false"
-          aria-controls="x-list"
-          aria-label="x"
-        />
+        <FormField label="Login" hint="Your id" error="Required" invalid={invalid}>
+          {(control) => <Input {...control} />}
+        </FormField>
       );
     }
-    render(
-      <FormField label="Pick">
-        <Custom />
-      </FormField>,
-    );
-    await userEvent.click(screen.getByText('Pick'));
-    expect(screen.getByRole('combobox')).toHaveFocus();
+    const { rerender } = render(<Example />);
+    const input = screen.getByRole('textbox', { name: 'Login' });
+    const id = input.id;
+    expect(input).toHaveAccessibleDescription('Your id');
+    expect(input).not.toHaveAttribute('aria-invalid');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    rerender(<Example invalid />);
+    expect(input.id).toBe(id);
+    expect(input).toHaveAccessibleDescription('Required');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input).toHaveAttribute('data-invalid');
+    expect(screen.queryByText('Your id')).not.toBeInTheDocument();
+    expect(input).toHaveAttribute('aria-describedby', screen.getByRole('alert').id);
+    rerender(<Example />);
+    expect(input).toHaveAccessibleDescription('Your id');
+    expect(input).not.toHaveAttribute('data-invalid');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('names Select, MultiSelect, Autocomplete and DatePicker through the label and describes them with the error', () => {
+  it('lets the caller compose additional descriptions onto the intended control', () => {
     render(
       <>
-        <FormField label="Language" error="Pick one" invalid>
-          <Select options={[{ value: 'de', label: 'German' }]} />
-        </FormField>
-        <FormField label="Tags">
-          <MultiSelect options={[{ value: 'a', label: 'A' }]} />
-        </FormField>
-        <FormField label="Course">
-          <Autocomplete suggestions={[]} />
-        </FormField>
-        <FormField label="Deadline">
-          <DatePicker />
+        <p id="extra">Extra context</p>
+        <FormField label="Points" hint="Available points">
+          {(control) => (
+            <InputNumber {...control} value={null} aria-describedby={`extra ${control['aria-describedby'] ?? ''}`} />
+          )}
         </FormField>
       </>,
     );
-    const language = screen.getByRole('combobox', { name: 'Language' });
-    expect(language).toHaveAttribute('aria-invalid', 'true');
-    expect(language).toHaveAccessibleDescription('Pick one');
-    expect(screen.getByRole('combobox', { name: 'Tags' })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Course' })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Deadline' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Points' })).toHaveAccessibleDescription(
+      'Extra context Available points',
+    );
   });
 
-  it('renders no empty label element when there is no label', () => {
-    const { container } = render(
-      <FormField>
-        <Checkbox aria-label="Agree" />
+  it('omits empty labels and descriptions without dangling IDs', () => {
+    const { container, rerender } = render(
+      <FormField label="" hint="   ">
+        {(control) => <Input {...control} aria-label="Login" />}
       </FormField>,
     );
-    expect(container.querySelector('label.tumaet-ui-form-field-label')).toBeNull();
+    expect(container.querySelector('label')).toBeNull();
+    expect(container.querySelector('.tumaet-ui-form-field-hint')).toBeNull();
+    expect(screen.getByRole('textbox')).not.toHaveAttribute('aria-describedby');
+    rerender(
+      <FormField label="Login" hint="Hidden while invalid" invalid error="  ">
+        {(control) => <Input {...control} />}
+      </FormField>,
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByText('Hidden while invalid')).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('textbox')).not.toHaveAttribute('aria-describedby');
+  });
+
+  it('renders native label/id/hint/error associations on the server and preserves them through hydration', async () => {
+    function Example() {
+      return (
+        <>
+          <FormField label="Login" hint="Your identifier">
+            {(control) => <Input {...control} defaultValue="Ada" />}
+          </FormField>
+          <FormField label="Notes" hint="Not shown" invalid error="Too short">
+            {(control) => <Textarea {...control} defaultValue="Draft" />}
+          </FormField>
+        </>
+      );
+    }
+    const host = document.createElement('div');
+    host.innerHTML = renderToString(<Example />);
+    document.body.append(host);
+    const server = within(host);
+    const login = server.getByRole('textbox', { name: 'Login' });
+    const notes = server.getByRole('textbox', { name: 'Notes' });
+    const ids = [...host.querySelectorAll('[id]')].map((node) => node.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(server.getByText('Login')).toHaveAttribute('for', login.id);
+    expect(login).toHaveAccessibleDescription('Your identifier');
+    expect(notes).toHaveAccessibleDescription('Too short');
+    expect(notes).toHaveAttribute('aria-invalid', 'true');
+    const recover = vi.fn();
+    const { unmount } = render(<Example />, { container: host, hydrate: true, onRecoverableError: recover });
+    expect(screen.getByRole('textbox', { name: 'Login' })).toBe(login);
+    expect(screen.getByRole('textbox', { name: 'Notes' })).toBe(notes);
+    expect([...host.querySelectorAll('[id]')].map((node) => node.id)).toEqual(ids);
+    expect(recover).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByText('Notes'));
+    expect(notes).toHaveFocus();
+    await expectNoA11yViolations(host);
+    unmount();
+    host.remove();
+  });
+});
+
+describe('Field parts', () => {
+  it('uses explicit native associations; the caller updates descriptions and validation state', async () => {
+    function Example({ invalid }: { invalid: boolean }) {
+      return (
+        <Field data-invalid={invalid || undefined}>
+          <FieldLabel htmlFor="summary">Summary</FieldLabel>
+          <Textarea
+            id="summary"
+            required
+            aria-invalid={invalid || undefined}
+            aria-describedby={invalid ? 'summary-hint summary-error' : 'summary-hint'}
+          />
+          <FieldDescription id="summary-hint">Visible to students</FieldDescription>
+          {invalid ? <FieldError id="summary-error">Enter a summary</FieldError> : null}
+        </Field>
+      );
+    }
+    const { container, rerender } = render(<Example invalid={false} />);
+    const area = screen.getByRole('textbox', { name: 'Summary' });
+    expect(area).toBeInvalid(); // Native required, without inferred ARIA or an automatic error.
+    expect(area).not.toHaveAttribute('aria-invalid');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    rerender(<Example invalid />);
+    expect(area).toHaveAccessibleDescription('Visible to students Enter a summary');
+    await userEvent.type(area, 'A valid native value');
+    expect(area).toHaveAttribute('aria-invalid', 'true'); // Caller owns validation presentation.
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter a summary');
+    rerender(<Example invalid={false} />);
+    expect(area).not.toHaveAttribute('aria-invalid');
+    expect(area).toHaveAccessibleDescription('Visible to students');
+    await expectNoA11yViolations(container);
+  });
+
+  it('forwards native props, classes and refs to the four semantic elements and clears refs on unmount', () => {
+    const field = createRef<HTMLDivElement>();
+    const label = createRef<HTMLLabelElement>();
+    const description = createRef<HTMLParagraphElement>();
+    const error = createRef<HTMLDivElement>();
+    const { container, unmount } = render(
+      <Field ref={field} className="custom" data-invalid>
+        <FieldLabel ref={label} htmlFor="title">
+          Title
+        </FieldLabel>
+        <Input id="title" aria-describedby="title-hint title-error" aria-invalid />
+        <FieldDescription ref={description} id="title-hint">
+          Public
+        </FieldDescription>
+        <FieldError ref={error} id="title-error" role="status">
+          Unavailable
+        </FieldError>
+      </Field>,
+    );
+    expect(field.current).toBe(container.firstChild);
+    expect(field.current).toHaveClass('tumaet-ui-form-field', 'custom');
+    expect(label.current).toBe(screen.getByText('Title'));
+    expect(label.current?.control).toBe(screen.getByRole('textbox'));
+    expect(description.current?.tagName).toBe('P');
+    expect(error.current).toBe(screen.getByRole('status'));
+    unmount();
+    expect(field.current).toBeNull();
+    expect(label.current).toBeNull();
+    expect(description.current).toBeNull();
+    expect(error.current).toBeNull();
   });
 });

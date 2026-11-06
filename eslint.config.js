@@ -131,6 +131,24 @@ export default tseslint.config(
     },
   },
 
+  // Native browser tests share Vitest rules but not Testing Library's DOM-query rules.
+  {
+    files: ['tests/browser/**/*.test.tsx'],
+    // Browser queries and native interactions come from vitest/browser, not Testing Library.
+    extends: [vitest.configs.recommended],
+    rules: {
+      'vitest/expect-expect': ['error', { assertFunctionNames: ['expect', 'expectPalette'] }],
+      'vitest/no-focused-tests': 'error',
+      'vitest/no-disabled-tests': 'error',
+    },
+  },
+  {
+    files: ['tests/browser/fixtures.tsx'],
+    rules: {
+      // Dialog's initial-focus API is intentional; this is not the DOM autoFocus attribute.
+      'jsx-a11y/no-autofocus': ['error', { ignoreNonDOM: true }],
+    },
+  },
   // Stories.
   { extends: [storybook.configs['flat/recommended']] },
   { files: ['.storybook/**'], rules: { 'storybook/story-exports': 'off' } },
