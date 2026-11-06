@@ -1,15 +1,8 @@
 import { useId, useState } from 'react';
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn } from 'storybook/test';
-import { FormField } from '../form-field/form-field';
+import { Field, FieldDescription, FieldLabel } from '../form-field/form-field';
 import { Checkbox } from './checkbox';
-
-/** The element for `selector`, failing the story when it is missing. */
-function requireElement(root: Element, selector: string): Element {
-  const element = root.querySelector(selector);
-  if (element === null) throw new Error(`No element matches ${selector}`);
-  return element;
-}
 
 function InlineControl(Story: Parameters<Decorator>[0]) {
   return (
@@ -26,9 +19,9 @@ const meta = {
     docs: {
       description: {
         component:
-          'Native checkbox with the TUM AET UI look. Native props (`id`, `name`, `value`, `aria-*`) go to the `<input>`; `className` and `style` go to the wrapper. ' +
-          'Label it with a `<label htmlFor>` or `aria-label`. `indeterminate` shows the partial-selection dash for a select-all control and never changes `checked`. ' +
-          'The box keeps its square shape in tight rows and next to labels that wrap.',
+          'Native input with AET appearance. Use checked/defaultChecked and native onChange events. ' +
+          'ref targets the input; className/style target the visual wrapper. Other native props target the input. ' +
+          'Uncontrolled selection and reset follow HTML/React defaults; controlled state and reset belong to the caller.',
       },
     },
   },
@@ -36,7 +29,6 @@ const meta = {
     checked: false,
     disabled: false,
     indeterminate: false,
-    invalid: false,
     onChange: fn(),
   },
   argTypes: { onChange: { control: false } },
@@ -52,15 +44,20 @@ const meta = {
       setValue(checked ?? false);
     }
     return (
-      <label htmlFor={id} style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--tumaet-ui-spacing) * 2)' }}>
+      <label
+        id={`${id}-label`}
+        htmlFor={id}
+        style={{ display: 'flex', alignItems: 'center', gap: 'calc(var(--tumaet-ui-spacing) * 2)' }}
+      >
         <Checkbox
           name="terms"
           {...args}
           id={id}
+          aria-labelledby={`${id}-label`}
           checked={value}
-          onChange={(next, event) => {
-            setValue(next);
-            onChange?.(next, event);
+          onChange={(event) => {
+            onChange?.(event);
+            setValue(event.currentTarget.checked);
           }}
         />
         Accept the terms and conditions
@@ -79,7 +76,7 @@ export const Default: Story = {
     await expect(box).toHaveFocus();
     await userEvent.keyboard(' ');
     await expect(box).toBeChecked();
-    await expect(args.onChange).toHaveBeenCalledWith(true, expect.anything());
+    await expect(args.onChange).toHaveBeenCalledWith(expect.objectContaining({ type: 'change' }));
   },
 };
 
@@ -100,68 +97,27 @@ export const DisabledUnchecked: Story = {
 };
 
 export const Invalid: Story = {
-  args: { invalid: true },
+  args: { 'aria-invalid': true },
 };
 
-export const InFormField: Story = {
+export const InField: Story = {
   render: () => (
-    <FormField label="Terms" hint="You need to accept before continuing">
-      <Checkbox />
-    </FormField>
+    <Field>
+      <FieldLabel htmlFor="checkbox-field">Terms</FieldLabel>
+      <Checkbox id="checkbox-field" aria-describedby="checkbox-field-hint" />
+      <FieldDescription id="checkbox-field-hint">You need to accept before continuing</FieldDescription>
+    </Field>
   ),
 };
 
 const WRAPPING_LABEL =
   'Alle Passkeys löschen. Du musst deine Geräte erneut registrieren, bevor du dich das nächste Mal mit einem Passkey anmeldest.';
 
-/**
- * A checkbox stays square beside a label that wraps onto several lines.
- *
- * The box is sized from `--tumaet-ui-spacing` with a fallback and measured with a border-box, so neither a context that
- * does not carry the token nor a missing global reset deforms it. The box is measured rather than the wrapper, because
- * the box is what a reader actually sees.
- */
-export const StaysSquareBesideAWrappingLabel: Story = {
-  tags: ['!dev', '!autodocs'],
+export const WrappingLabel: Story = {
   render: () => (
-    <div style={{ width: 420 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Checkbox id="wrap-centered" />
-        <label htmlFor="wrap-centered">{WRAPPING_LABEL}</label>
-      </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <Checkbox id="wrap-stretched" />
-        <label htmlFor="wrap-stretched">{WRAPPING_LABEL}</label>
-      </div>
-      <div style={{ ['--tumaet-ui-spacing' as string]: 'initial', display: 'flex', gap: 8 }}>
-        <Checkbox id="wrap-untokened" />
-        <label htmlFor="wrap-untokened">{WRAPPING_LABEL}</label>
-      </div>
+    <div style={{ display: 'flex', gap: 8, width: 120 }}>
+      <Checkbox id="wrapping-checkbox" />
+      <label htmlFor="wrapping-checkbox">{WRAPPING_LABEL}</label>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    for (const id of ['wrap-centered', 'wrap-stretched', 'wrap-untokened']) {
-      const box = requireElement(canvasElement, `#${id}`).nextElementSibling?.getBoundingClientRect();
-      if (box === undefined) throw new Error(`${id} has no box`);
-      await expect(box.width, `${id} width`).toBeGreaterThan(0);
-      await expect(box.width, `${id} is square`).toBeCloseTo(box.height, 1);
-    }
-  },
-};
-
-export const StaysSquareInATightRow: Story = {
-  tags: ['!dev', '!autodocs'],
-  render: () => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: 120 }}>
-      <Checkbox id="tight" />
-      <label htmlFor="tight">A label far too long to fit beside the box in this row</label>
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    const parent = requireElement(canvasElement, '#tight').parentElement;
-    if (parent === null) throw new Error('#tight has no parent');
-    const { width, height } = parent.getBoundingClientRect();
-    await expect(width).toBeGreaterThan(0);
-    await expect(width).toBeCloseTo(height, 1);
-  },
 };

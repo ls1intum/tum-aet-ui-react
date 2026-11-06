@@ -1,43 +1,36 @@
-import { useState } from 'react';
-import { Select } from './select';
-
-const countries = [
-  { code: 'de', name: 'Germany' },
-  { code: 'fr', name: 'France' },
-  { code: 'it', name: 'Italy' },
-  { code: 'es', name: 'Spain' },
-  { code: 'pt', name: 'Portugal' },
-  { code: 'nl', name: 'Netherlands' },
-];
+import { useId, useState } from 'react';
+import { Select, SelectTrigger, SelectValue, SelectPortal, SelectPositioner, SelectPopup, SelectList } from './select';
+import { Field, FieldLabel, FieldDescription } from '../form-field';
 
 export default function SelectDemo() {
-  const [country, setCountry] = useState<unknown>('de');
+  const id = useId();
+  const [value, setValue] = useState<string | null>(null);
   return (
-    <div style={{ display: 'grid', gap: 12, maxWidth: 320 }}>
+    <Field>
+      <FieldLabel id={`${id}-label`} htmlFor={id}>
+        Language
+      </FieldLabel>
       <Select
-        aria-label="Country"
-        options={countries}
-        optionLabel="name"
-        optionValue="code"
-        value={country}
-        onChange={setCountry}
-        showClear
-        placeholder="Select a country"
-      />
-      <Select
-        aria-label="Country with filter"
-        options={countries}
-        optionLabel="name"
-        optionValue="code"
-        filter
-        placeholder="Filterable"
-      />
-      <Select aria-label="Small" size="small" options={['One', 'Two']} placeholder="Small" />
-      <Select aria-label="Large" size="large" options={['One', 'Two']} placeholder="Large" />
-      <Select aria-label="Invalid" options={['One', 'Two']} aria-invalid placeholder="Invalid" />
-      <Select aria-label="Disabled" options={['One', 'Two']} disabled defaultValue="One" />
-      <Select aria-label="Empty" options={[]} placeholder="No options" />
-      <p>Selected: {String(country)}</p>
-    </div>
+        items={['English', 'German', 'Spanish'].map((language) => ({
+          key: language,
+          value: language,
+          label: language,
+        }))}
+        value={value}
+        onValueChange={setValue}
+      >
+        <SelectTrigger id={id} aria-labelledby={`${id}-label`} aria-describedby={`${id}-description`}>
+          <SelectValue placeholder="Choose a language" />
+        </SelectTrigger>
+        <SelectPortal>
+          <SelectPositioner>
+            <SelectPopup>
+              <SelectList />
+            </SelectPopup>
+          </SelectPositioner>
+        </SelectPortal>
+      </Select>
+      <FieldDescription id={`${id}-description`}>Selected: {value ?? 'none'}</FieldDescription>
+    </Field>
   );
 }

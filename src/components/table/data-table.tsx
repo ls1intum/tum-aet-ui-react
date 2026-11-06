@@ -4,7 +4,14 @@ import { cx } from '../../internal/cx';
 import { useTranslate } from '../../internal/i18n';
 import { SearchIcon, SortDownIcon, SortIcon, SortUpIcon } from '../../internal/icons';
 import { Paginator } from '../paginator/paginator';
-import { Tooltip } from '../tooltip/tooltip';
+import {
+  Tooltip,
+  TooltipArrow,
+  TooltipPopup,
+  TooltipPortal,
+  TooltipPositioner,
+  TooltipTrigger,
+} from '../tooltip/tooltip';
 import { CircleQuestionIcon } from './icons';
 import {
   ariaSortFor,
@@ -262,10 +269,20 @@ export function DataTable<T>({
                         <span>{heading}</span>
                       )}
                       {tooltip !== undefined && tooltip !== '' ? (
-                        <Tooltip content={tooltip} describesHost={false}>
-                          <button type="button" className="tumaet-ui-data-table-help" aria-label={tooltip}>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={<button type="button" className="tumaet-ui-data-table-help" aria-label={tooltip} />}
+                          >
                             <CircleQuestionIcon />
-                          </button>
+                          </TooltipTrigger>
+                          <TooltipPortal>
+                            <TooltipPositioner>
+                              <TooltipPopup>
+                                {tooltip}
+                                <TooltipArrow />
+                              </TooltipPopup>
+                            </TooltipPositioner>
+                          </TooltipPortal>
                         </Tooltip>
                       ) : null}
                     </span>

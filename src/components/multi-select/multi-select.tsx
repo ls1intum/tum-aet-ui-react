@@ -16,7 +16,6 @@ import { CheckIcon, ChevronDownIcon } from '../../internal/icons';
 import { useControllable } from '../../internal/use-controllable';
 import { Listbox, optionId, type ListboxItem } from '../select/listbox';
 import { navigate, optionLabelOf, optionValueOf } from '../select/use-listbox';
-import { useFormFieldContext, useFormFieldControl } from '../form-field/form-field';
 
 export type MultiSelectSize = 'small' | 'default' | 'large';
 /** `outlined` matches an outlined primary button, for toolbars. */
@@ -121,11 +120,7 @@ export function MultiSelect({
 }: MultiSelectProps) {
   const t = useTranslate();
   const generatedId = useId();
-  const formCtx = useFormFieldContext();
-  const field = useFormFieldControl({ id: ownId, 'aria-describedby': ownDescribedBy, 'aria-invalid': ownInvalid });
-  const ariaDescribedBy = field['aria-describedby'];
-  const ariaInvalid = field['aria-invalid'];
-  const triggerId = ownId ?? field.id;
+  const triggerId = ownId ?? generatedId;
   const listboxId = `${generatedId}-listbox`;
   const root = useRef<HTMLDivElement | null>(null);
   const trigger = useRef<HTMLDivElement | null>(null);
@@ -259,7 +254,7 @@ export function MultiSelect({
 
   // One hidden input per chosen value, in order; the position is the identity of an entry.
   const hiddenInputs = values.map((v, position) => ({ key: position, value: hiddenInputValue(v) }));
-  const invalid = ariaInvalid === true || ariaInvalid === 'true';
+  const invalid = ownInvalid === true || ownInvalid === 'true';
 
   return (
     <div
@@ -283,9 +278,9 @@ export function MultiSelect({
         aria-controls={open ? listboxId : undefined}
         aria-activedescendant={open && activeIndex >= 0 ? optionId(listboxId, activeIndex) : undefined}
         aria-label={ariaLabel}
-        aria-labelledby={ariaLabelledBy ?? (ariaLabel !== undefined && ariaLabel !== '' ? undefined : formCtx?.labelId)}
-        aria-describedby={ariaDescribedBy}
-        aria-invalid={ariaInvalid}
+        aria-labelledby={ariaLabelledBy}
+        aria-describedby={ownDescribedBy}
+        aria-invalid={ownInvalid}
         aria-required={required || undefined}
         className="tumaet-ui-multi-select-trigger"
         data-invalid={invalid || undefined}

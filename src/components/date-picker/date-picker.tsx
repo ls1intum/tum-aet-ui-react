@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type FocusEventHandler,
@@ -14,7 +15,14 @@ import { CalendarIcon, XIcon } from '../../internal/icons';
 import { mergeRefs } from '../../internal/merge-refs';
 import { useControllable } from '../../internal/use-controllable';
 import { Button } from '../button/button';
-import { Tooltip } from '../tooltip/tooltip';
+import {
+  Tooltip,
+  TooltipArrow,
+  TooltipPopup,
+  TooltipPortal,
+  TooltipPositioner,
+  TooltipTrigger,
+} from '../tooltip/tooltip';
 import { Calendar } from './calendar';
 import {
   combineDateAndTime,
@@ -29,7 +37,6 @@ import {
 } from './date-picker-utils';
 import { ClockIcon, GlobeIcon } from './icons';
 import { TimeControls } from './time-controls';
-import { useFormFieldControl } from '../form-field/form-field';
 
 export interface DatePickerProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -110,10 +117,8 @@ export function DatePicker({
   ...rest
 }: DatePickerProps) {
   const translate = useTranslate();
-  const formField = useFormFieldControl({ id: idProp, 'aria-describedby': ownDescribedBy, 'aria-invalid': ownInvalid });
-  const ariaDescribedBy = formField['aria-describedby'];
-  const ariaInvalid = formField['aria-invalid'];
-  const id = idProp ?? formField.id;
+  const generatedId = useId();
+  const id = idProp ?? generatedId;
   const panelId = `${id}-dialog`;
   const errorId = `${id}-error`;
   const [value, setValue] = useControllable<Date | null>(valueProp, defaultValue, onChange);
@@ -158,11 +163,11 @@ export function DatePicker({
   }, [textValid]);
 
   const ownLabel = ariaLabelledBy === undefined || ariaLabelledBy === '' ? ariaLabel : undefined;
-  const externallyInvalid = ariaInvalid === true || ariaInvalid === 'true';
+  const externallyInvalid = ownInvalid === true || ownInvalid === 'true';
   const showTextError = !textValid && (!validateOnBlur || !editing);
   const showError = externallyInvalid || showTextError;
   const showMessage = !hideValidationMessage && showTextError;
-  const describedBy = [showMessage ? errorId : undefined, ariaDescribedBy].filter(Boolean).join(' ') || undefined;
+  const describedBy = [showMessage ? errorId : undefined, ownDescribedBy].filter(Boolean).join(' ') || undefined;
 
   let mode: 'date' | 'time' | 'datetime' = 'datetime';
   if (dateOnly) mode = 'date';
@@ -317,7 +322,7 @@ export function DatePicker({
           role="group"
           aria-label={ownLabel}
           aria-labelledby={ariaLabelledBy}
-          aria-describedby={ariaDescribedBy}
+          aria-describedby={ownDescribedBy}
           id={id}
         >
           {!timeOnly && calendar(false)}
@@ -333,12 +338,24 @@ export function DatePicker({
   return (
     <div {...rootProps}>
       {showTimeZoneWarning ? (
-        <Tooltip content={timeZoneText} describesHost={false}>
-          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the tooltip trigger must be keyboard focusable to reveal the time zone */}
-          <span className="tumaet-ui-date-picker-timezone" tabIndex={0} role="img" aria-label={timeZoneText}>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focus exposes the time-zone tooltip to keyboard users
+              <span className="tumaet-ui-date-picker-timezone" tabIndex={0} role="img" aria-label={timeZoneText} />
+            }
+          >
             <GlobeIcon />
             <ClockIcon className="tumaet-ui-date-picker-timezone-clock" />
-          </span>
+          </TooltipTrigger>
+          <TooltipPortal>
+            <TooltipPositioner>
+              <TooltipPopup>
+                {timeZoneText}
+                <TooltipArrow />
+              </TooltipPopup>
+            </TooltipPositioner>
+          </TooltipPortal>
         </Tooltip>
       ) : null}
       <div ref={field} className="tumaet-ui-date-picker-field">

@@ -1,280 +1,300 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { createRef, useId, useState } from 'react';
 import { expectNoA11yViolations } from '../../test-utils';
-import { Select } from './select';
+import { Field, FieldLabel, FieldDescription } from '../form-field';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectPortal,
+  SelectPositioner,
+  SelectPopup,
+  SelectList,
+  type SelectProps,
+  type SelectTriggerProps,
+} from './select';
 
-const fruits = ['Apple', 'Apricot', 'Banana', 'Cherry'];
-const people = [
-  { id: 1, name: 'Ada Lovelace', login: 'ada' },
-  { id: 2, name: 'Grace Hopper', login: 'grace' },
-  { id: 3, name: 'Alan Turing', login: 'alan' },
-];
-
-const trigger = () => screen.getByRole('combobox');
-const activeText = () => document.getElementById(trigger().getAttribute('aria-activedescendant')!)?.textContent;
-const optionNames = () => screen.queryAllByRole('option').map((o) => o.textContent);
+const items = ['Alpha', 'Beta', 'Gamma'].map((value) => ({ key: value, value, label: value }));
+function Parts(props: SelectTriggerProps = {}) {
+  return (
+    <>
+      <SelectTrigger {...props}>
+        <SelectValue placeholder="Choose" />
+      </SelectTrigger>
+      <SelectPortal>
+        <SelectPositioner>
+          <SelectPopup>
+            <SelectList />
+          </SelectPopup>
+        </SelectPositioner>
+      </SelectPortal>
+    </>
+  );
+}
+function Example({
+  invalid = false,
+  value,
+  onValueChange,
+  ...props
+}: Partial<SelectProps<string>> & { invalid?: boolean } = {}) {
+  const id = useId();
+  const [selection, setSelection] = useState<string | null>(null);
+  return (
+    <Field>
+      <FieldLabel id={`${id}-label`} htmlFor={id}>
+        Course
+      </FieldLabel>
+      <Select
+        items={items}
+        {...props}
+        value={value === undefined ? selection : value}
+        onValueChange={(next, details) => {
+          onValueChange?.(next, details);
+          if (!details.isCanceled) setSelection(next);
+        }}
+      >
+        <Parts
+          id={id}
+          aria-labelledby={`${id}-label`}
+          aria-describedby={`${id}-description`}
+          aria-invalid={invalid || undefined}
+        />
+      </Select>
+      <FieldDescription id={`${id}-description`}>{invalid ? 'Invalid course' : 'Pick a course.'}</FieldDescription>
+    </Field>
+  );
+}
+function values(form: HTMLFormElement, name = 'course') {
+  return new FormData(form).getAll(name);
+}
+async function openSelect(trigger: HTMLElement) {
+  act(() => trigger.focus());
+  await userEvent.keyboard('{ArrowDown}');
+  await screen.findByRole('listbox');
+}
 
 describe('Select', () => {
-  it('shows the placeholder and the label of the selected value', () => {
-    const { rerender } = render(<Select aria-label="Fruit" options={fruits} placeholder="Pick one" />);
-    expect(trigger()).toHaveTextContent('Pick one');
-    rerender(<Select aria-label="Fruit" options={fruits} value="Banana" />);
-    expect(trigger()).toHaveTextContent('Banana');
+  it('uses explicit label, description, invalid and disabled props with Field presentation', () => {
+    const { rerender } = render(<Example />);
+    const trigger = screen.getByRole('combobox', { name: 'Course' });
+    expect(trigger).toHaveAccessibleDescription('Pick a course.');
+    expect(screen.getByText('Course')).toHaveAttribute('for', trigger.id);
+    rerender(<Example invalid />);
+    expect(screen.getByRole('combobox', { name: 'Course' })).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('combobox')).toHaveAccessibleDescription('Invalid course');
+    rerender(<Example disabled />);
+    expect(screen.getByRole('combobox')).toBeDisabled();
   });
 
-  it('opens a listbox, marks the selected option and selects by click', async () => {
-    const onChange = vi.fn();
-    render(<Select aria-label="Fruit" options={fruits} defaultValue="Banana" onChange={onChange} />);
-    expect(trigger()).toHaveAttribute('aria-expanded', 'false');
-    await userEvent.click(trigger());
-    expect(trigger()).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('listbox')).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Banana' })).toHaveAttribute('aria-selected', 'true');
-    expect(trigger()).toHaveAttribute('aria-activedescendant', screen.getByRole('option', { name: 'Banana' }).id);
-    await userEvent.click(screen.getByRole('option', { name: 'Cherry' }));
-    expect(onChange).toHaveBeenCalledWith('Cherry');
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-    expect(trigger()).toHaveTextContent('Cherry');
-    expect(trigger()).toHaveFocus();
+  it('selects with keyboard typeahead, skips disabled items and returns focus', async () => {
+    const change = vi.fn();
+    render(<Example items={[items[0]!, { ...items[1]!, disabled: true }, items[2]!]} onValueChange={change} />);
+    const trigger = screen.getByRole('combobox');
+    await openSelect(trigger);
+    await userEvent.keyboard('g{Enter}');
+    await waitFor(() => expect(trigger).toHaveTextContent('Gamma'));
+    expect(change).toHaveBeenCalledWith('Gamma', expect.objectContaining({ reason: 'item-press' }));
+    expect(trigger).toHaveFocus();
+    await openSelect(trigger);
+    await userEvent.click(screen.getByRole('option', { name: 'Beta' }));
+    expect(change).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('option', { name: 'Beta' })).toHaveAttribute('aria-disabled', 'true');
   });
 
-  it('writes optionValue for object options and the option itself otherwise', async () => {
-    const onChange = vi.fn();
-    const { rerender } = render(
-      <Select aria-label="Person" options={people} optionLabel="name" optionValue="id" onChange={onChange} />,
-    );
-    await userEvent.click(trigger());
-    await userEvent.click(screen.getByRole('option', { name: 'Grace Hopper' }));
-    expect(onChange).toHaveBeenLastCalledWith(2);
-    rerender(<Select aria-label="Person" options={people} optionLabel="name" onChange={onChange} />);
-    await userEvent.click(trigger());
-    await userEvent.click(screen.getByRole('option', { name: 'Ada Lovelace' }));
-    expect(onChange).toHaveBeenLastCalledWith(people[0]);
-  });
-
-  it('is controllable', async () => {
+  it('preserves cancellation of value and controlled open requests', async () => {
     function Controlled() {
-      const [value, setValue] = useState<unknown>('Apple');
+      const [open, setOpen] = useState(false);
       return (
-        <>
-          <Select aria-label="Fruit" options={fruits} value={value} onChange={setValue} />
-          <button type="button" onClick={() => setValue('Cherry')}>
-            external
-          </button>
-        </>
+        <Example
+          open={open}
+          onValueChange={(_next, details) => details.cancel()}
+          onOpenChange={(next, details) => {
+            if (details.reason === 'escape-key') details.cancel();
+            if (!details.isCanceled) setOpen(next);
+          }}
+        />
       );
     }
     render(<Controlled />);
-    await userEvent.click(screen.getByText('external'));
-    expect(trigger()).toHaveTextContent('Cherry');
+    await openSelect(screen.getByRole('combobox'));
+    await userEvent.click(screen.getByRole('option', { name: 'Beta' }));
+    expect(screen.getByRole('combobox')).toHaveTextContent('Choose');
+    await openSelect(screen.getByRole('combobox'));
+    await userEvent.keyboard('{Escape}');
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
   });
 
-  describe('keyboard', () => {
-    it('opens with ArrowDown, moves with arrows, Home and End, selects with Enter', async () => {
-      const onChange = vi.fn();
-      render(<Select aria-label="Fruit" options={fruits} onChange={onChange} />);
-      trigger().focus();
-      await userEvent.keyboard('{ArrowDown}');
-      expect(screen.getByRole('listbox')).toBeInTheDocument();
-      const active = () => document.getElementById(trigger().getAttribute('aria-activedescendant')!)?.textContent;
-      expect(active()).toBe('Apple');
-      await userEvent.keyboard('{ArrowDown}{ArrowDown}');
-      expect(active()).toBe('Banana');
-      await userEvent.keyboard('{End}');
-      expect(active()).toBe('Cherry');
-      await userEvent.keyboard('{ArrowDown}');
-      expect(active()).toBe('Cherry');
-      await userEvent.keyboard('{Home}');
-      expect(active()).toBe('Apple');
-      await userEvent.keyboard('{ArrowDown}{Enter}');
-      expect(onChange).toHaveBeenCalledWith('Apricot');
-      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-    });
-
-    it('selects with Space and opens with Enter', async () => {
-      const onChange = vi.fn();
-      render(<Select aria-label="Fruit" options={fruits} onChange={onChange} />);
-      trigger().focus();
-      await userEvent.keyboard('{Enter}');
-      expect(screen.getByRole('listbox')).toBeInTheDocument();
-      await userEvent.keyboard('{ArrowDown} ');
-      expect(onChange).toHaveBeenCalledWith('Apricot');
-    });
-
-    it('closes with Escape without selecting and returns focus to the trigger', async () => {
-      const onChange = vi.fn();
-      render(<Select aria-label="Fruit" options={fruits} onChange={onChange} />);
-      await userEvent.click(trigger());
-      await userEvent.keyboard('{ArrowDown}{Escape}');
-      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-      expect(onChange).not.toHaveBeenCalled();
-      expect(trigger()).toHaveFocus();
-    });
-
-    it('type-ahead activates matching options and cycles on repeated characters', async () => {
-      render(<Select aria-label="Fruit" options={fruits} />);
-      trigger().focus();
-      await userEvent.keyboard('{ArrowDown}');
-      const active = () => document.getElementById(trigger().getAttribute('aria-activedescendant')!)?.textContent;
-      await userEvent.keyboard('c');
-      expect(active()).toBe('Cherry');
-      await new Promise((r) => setTimeout(r, 600));
-      await userEvent.keyboard('a');
-      expect(active()).toBe('Apple');
-      await userEvent.keyboard('a');
-      expect(active()).toBe('Apricot');
-      await new Promise((r) => setTimeout(r, 600));
-      await userEvent.keyboard('ap');
-      expect(active()).toBe('Apricot');
-    });
-
-    it('typing on the closed trigger opens and activates the match', async () => {
-      render(<Select aria-label="Fruit" options={fruits} />);
-      trigger().focus();
-      await userEvent.keyboard('b');
-      const active = document.getElementById(trigger().getAttribute('aria-activedescendant')!);
-      expect(active).toHaveTextContent('Banana');
-    });
-
-    it('commits the active option on Tab', async () => {
-      const onChange = vi.fn();
-      render(<Select aria-label="Fruit" options={fruits} onChange={onChange} />);
-      trigger().focus();
-      await userEvent.keyboard('{ArrowDown}{ArrowDown}{Tab}');
-      expect(onChange).toHaveBeenCalledWith('Apricot');
-    });
-  });
-
-  describe('filter', () => {
-    it('narrows the list case-insensitively, reports no matches and resets on close', async () => {
-      render(<Select aria-label="Fruit" options={fruits} filter />);
-      await userEvent.click(trigger());
-      const input = screen.getByRole('textbox', { name: 'Filter options' });
-      expect(input).toHaveFocus();
-      await userEvent.type(input, 'AP');
-      expect(optionNames()).toEqual(['Apple', 'Apricot']);
-      await userEvent.type(input, 'zzz');
-      expect(optionNames()).toEqual(['No matching options']);
-      await userEvent.keyboard('{Escape}');
-      await userEvent.click(trigger());
-      expect(optionNames()).toHaveLength(4);
-    });
-
-    it('searches filterBy fields, walks the narrowed list and describes the active option on the field', async () => {
-      const onChange = vi.fn();
-      render(
-        <Select
-          aria-label="Person"
-          options={people}
-          optionLabel="name"
-          optionValue="id"
-          filter
-          filterBy="name,login"
-          onChange={onChange}
-        />,
-      );
-      await userEvent.click(trigger());
-      const input = screen.getByRole('textbox');
-      await userEvent.type(input, 'l');
-      expect(optionNames()).toEqual(['Ada Lovelace', 'Alan Turing']);
-      await userEvent.type(input, 'an');
-      expect(optionNames()).toEqual(['Alan Turing']);
-      expect(input).toHaveAttribute('aria-activedescendant', screen.getByRole('option').id);
-      await userEvent.keyboard('{Enter}');
-      expect(onChange).toHaveBeenCalledWith(3);
-    });
-
-    it('puts the first typed character into the filter when opened from the trigger', async () => {
-      render(<Select aria-label="Fruit" options={fruits} filter />);
-      trigger().focus();
-      await userEvent.keyboard('b');
-      expect(screen.getByRole('textbox')).toHaveValue('b');
-      expect(optionNames()).toEqual(['Banana']);
-    });
-  });
-
-  it('clears with the clear button and emits null', async () => {
-    const onChange = vi.fn();
+  it('forwards trigger refs, render props, class functions and handler cancellation', async () => {
+    const ref = createRef<HTMLButtonElement>();
+    const calls: string[] = [];
+    const renderClick: SelectTriggerProps['onClick'] = (event) => {
+      calls.push(`render-${event.type}`);
+      event.preventBaseUIHandler();
+    };
     render(
-      <Select
-        aria-label="Fruit"
-        options={fruits}
-        defaultValue="Apple"
-        showClear
-        placeholder="none"
-        onChange={onChange}
-      />,
+      <Select items={items} value={null}>
+        <SelectTrigger
+          ref={ref}
+          aria-label="Course"
+          className={() => 'custom-trigger'}
+          render={<button type="button" onMouseDown={renderClick} onClick={renderClick} />}
+          onMouseDown={() => calls.push('consumer-mousedown')}
+          onClick={() => calls.push('consumer-click')}
+        >
+          Course
+        </SelectTrigger>
+        <SelectPortal>
+          <SelectPositioner>
+            <SelectPopup>
+              <SelectList />
+            </SelectPopup>
+          </SelectPositioner>
+        </SelectPortal>
+      </Select>,
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Clear selection' }));
-    expect(onChange).toHaveBeenCalledWith(null);
-    expect(trigger()).toHaveTextContent('none');
-    expect(screen.queryByRole('button', { name: 'Clear selection' })).not.toBeInTheDocument();
-  });
-
-  it('shows the empty message and the required, invalid and described-by state', async () => {
-    render(<Select aria-label="Fruit" options={[]} required aria-invalid aria-describedby="hint" />);
-    expect(trigger()).toHaveAttribute('aria-required', 'true');
-    expect(trigger()).toHaveAttribute('aria-invalid', 'true');
-    expect(trigger()).toHaveAttribute('aria-describedby', 'hint');
-    await userEvent.click(trigger());
-    expect(optionNames()).toEqual(['No available options']);
-  });
-
-  it('does not open when disabled', async () => {
-    render(<Select aria-label="Fruit" options={fruits} disabled />);
-    await userEvent.click(trigger());
+    const trigger = screen.getByRole('combobox', { name: 'Course' });
+    expect(ref.current).toBe(trigger);
+    expect(trigger).toHaveClass('tumaet-ui-select-trigger', 'custom-trigger');
+    await userEvent.click(trigger);
+    expect(calls).toEqual(['render-mousedown', 'render-click']);
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
-  it('closes on an outside click', async () => {
-    render(
+  it('supports object equality with separate display and submission functions', async () => {
+    function Objects() {
+      const [value, setValue] = useState<{ id: number; title: string } | null>({ id: 1, title: 'Alpha' });
+      return (
+        <form>
+          <Select
+            name="course"
+            items={[
+              { key: 1, value: { id: 1, title: 'Alpha' }, label: 'Alpha' },
+              { key: 2, value: { id: 2, title: 'Beta' }, label: 'Beta' },
+            ]}
+            value={value}
+            onValueChange={setValue}
+            isItemEqualToValue={(a, b) => a.id === b.id}
+            itemToStringLabel={(item) => item.title}
+            itemToStringValue={(item) => String(item.id)}
+          >
+            <Parts aria-label="Object course" />
+          </Select>
+        </form>
+      );
+    }
+    const { container } = render(<Objects />);
+    const form = container.querySelector('form')!;
+    expect(screen.getByRole('combobox')).toHaveTextContent('Alpha');
+    expect(values(form)).toEqual(['1']);
+    await openSelect(screen.getByRole('combobox'));
+    expect(screen.getByRole('option', { name: 'Alpha' })).toHaveAttribute('aria-selected', 'true');
+    await userEvent.click(screen.getByRole('option', { name: 'Beta' }));
+    expect(values(form)).toEqual(['2']);
+  });
+
+  it('submits null as an empty string and [] as no entries, with repeated names for multiple selections', async () => {
+    function Multiple() {
+      const [value, setValue] = useState<string[]>([]);
+      return (
+        <Select multiple name="courses" items={items} value={value} onValueChange={setValue}>
+          <Parts aria-label="Multiple" />
+        </Select>
+      );
+    }
+    const { container } = render(
+      <form>
+        <Example name="course" />
+        <Multiple />
+      </form>,
+    );
+    const form = container.querySelector('form')!;
+    expect(values(form)).toEqual(['']);
+    expect(values(form, 'courses')).toEqual([]);
+    await openSelect(screen.getByRole('combobox', { name: 'Multiple' }));
+    await userEvent.click(screen.getByRole('option', { name: 'Alpha' }));
+    await userEvent.click(screen.getByRole('option', { name: 'Gamma' }));
+    expect(values(form, 'courses')).toEqual(['Alpha', 'Gamma']);
+  });
+
+  it('does not submit disabled controls and keeps readOnly values unchanged', async () => {
+    const { container } = render(
+      <form>
+        <Example name="course" value="Alpha" disabled />
+        <Select items={items} name="readonly" value="Beta" readOnly>
+          <Parts aria-label="Read only" />
+        </Select>
+      </form>,
+    );
+    expect(values(container.querySelector('form')!)).toEqual([]);
+    await openSelect(screen.getByRole('combobox', { name: 'Read only' }));
+    await userEvent.click(screen.getByRole('option', { name: 'Gamma' }));
+    expect(values(container.querySelector('form')!, 'readonly')).toEqual(['Beta']);
+  });
+
+  it('leaves reset policy to the caller, preserving immediate FormData, focus and identity', () => {
+    const change = vi.fn();
+    const { container, rerender } = render(
+      <form>
+        <Example name="course" value="Alpha" onValueChange={change} />
+      </form>,
+    );
+    const form = container.querySelector('form')!;
+    rerender(
+      <form>
+        <Example name="course" value="Beta" onValueChange={change} />
+      </form>,
+    );
+    const trigger = screen.getByRole('combobox');
+    act(() => trigger.focus());
+    act(() => {
+      form.reset();
+      expect(values(form)).toEqual(['Beta']);
+    });
+    expect(screen.getByRole('combobox')).toBe(trigger);
+    expect(trigger).toHaveFocus();
+    expect(trigger).toHaveTextContent('Beta');
+    expect(change).not.toHaveBeenCalled();
+  });
+
+  it('associates with an external form mounted later and follows native form owner changes', () => {
+    const ref = createRef<HTMLInputElement>();
+    const { rerender } = render(<Example name="course" form="late" value="Beta" inputRef={ref} />);
+    rerender(
       <>
-        <Select aria-label="Fruit" options={fruits} />
-        <button type="button">outside</button>
+        <Example name="course" form="late" value="Beta" inputRef={ref} />
+        <form id="late" aria-label="Late" />
       </>,
     );
-    await userEvent.click(trigger());
-    await userEvent.click(screen.getByText('outside'));
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    const form = screen.getByRole<HTMLFormElement>('form', { name: 'Late' });
+    expect(ref.current?.form).toBe(form);
+    expect(values(form)).toEqual(['Beta']);
+    act(() => form.reset());
+    expect(values(form)).toEqual(['Beta']);
+    rerender(
+      <>
+        <Example name="course" form="other" value="Gamma" inputRef={ref} />
+        <form id="other" aria-label="Other" />
+      </>,
+    );
+    const other = screen.getByRole<HTMLFormElement>('form', { name: 'Other' });
+    expect(ref.current?.form).toBe(other);
+    expect(values(other)).toEqual(['Gamma']);
   });
 
-  it('activates the first option when an open, empty select receives options', async () => {
-    const { rerender } = render(<Select aria-label="Fruit" options={[]} />);
-    await userEvent.click(trigger());
-    expect(trigger()).not.toHaveAttribute('aria-activedescendant');
-    rerender(<Select aria-label="Fruit" options={fruits} />);
-    expect(activeText()).toBe('Apple');
+  it('runs React 19 input callback ref cleanup on unmount', () => {
+    const cleanup = vi.fn();
+    const inputRef = vi.fn(() => cleanup);
+    const { unmount } = render(<Example inputRef={inputRef} />);
+    expect(inputRef).toHaveBeenCalledOnce();
+    expect(inputRef).toHaveBeenCalledWith(expect.any(HTMLInputElement));
+    unmount();
+    expect(cleanup).toHaveBeenCalledOnce();
+    expect(inputRef).toHaveBeenCalledOnce();
   });
 
-  it('keeps aria-activedescendant valid when the options shrink', async () => {
-    const { rerender } = render(<Select aria-label="Fruit" options={fruits} />);
-    trigger().focus();
-    await userEvent.keyboard('{ArrowDown}{End}');
-    rerender(<Select aria-label="Fruit" options={fruits.slice(0, 2)} />);
-    expect(activeText()).toBe('Apricot');
-  });
-
-  it('closes when disabled while open and stays closed when enabled again', async () => {
-    const { rerender } = render(<Select aria-label="Fruit" options={fruits} />);
-    await userEvent.click(trigger());
-    rerender(<Select aria-label="Fruit" options={fruits} disabled />);
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-    rerender(<Select aria-label="Fruit" options={fruits} />);
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-    expect(trigger()).toHaveAttribute('aria-expanded', 'false');
-  });
-
-  it('has no accessibility violations closed and open', async () => {
-    render(<Select aria-label="Fruit" options={fruits} defaultValue="Apple" showClear />);
-    await expectNoA11yViolations();
-    await userEvent.click(trigger());
-    await expectNoA11yViolations();
-  });
-
-  it('has no accessibility violations with a filter', async () => {
-    render(<Select aria-label="Fruit" options={fruits} filter />);
-    await userEvent.click(trigger());
+  it('has no axe violations', async () => {
+    render(<Example defaultOpen />);
     await expectNoA11yViolations();
   });
 });

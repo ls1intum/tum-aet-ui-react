@@ -17,7 +17,6 @@ import { XIcon } from '../../internal/icons';
 import { useControllable } from '../../internal/use-controllable';
 import { Listbox, optionId, type ListboxItem } from '../select/listbox';
 import { optionLabelOf, valuesMatch } from '../select/use-listbox';
-import { useFormFieldControl } from '../form-field/form-field';
 
 export interface AutocompleteSearchEvent {
   query: string;
@@ -139,10 +138,7 @@ export function Autocomplete({
 }: AutocompleteProps) {
   const t = useTranslate();
   const generatedId = useId();
-  const field = useFormFieldControl({ id: ownId, 'aria-describedby': ownDescribedBy, 'aria-invalid': ownInvalid });
-  const ariaDescribedBy = field['aria-describedby'];
-  const ariaInvalid = field['aria-invalid'];
-  const inputId = ownId ?? field.id;
+  const inputId = ownId ?? generatedId;
   const listboxId = `${generatedId}-listbox`;
   const root = useRef<HTMLDivElement | null>(null);
   const container = useRef<HTMLDivElement | null>(null);
@@ -277,7 +273,7 @@ export function Autocomplete({
     ),
   }));
   const chipKeys = labelKeys(selected.map(label));
-  const invalid = ariaInvalid === true || ariaInvalid === 'true';
+  const invalid = ownInvalid === true || ownInvalid === 'true';
 
   return (
     <div {...rest} ref={root} className={cx('tumaet-ui-autocomplete', className)}>
@@ -334,8 +330,8 @@ export function Autocomplete({
           aria-activedescendant={visible && activeIndex >= 0 ? optionId(listboxId, activeIndex) : undefined}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
-          aria-describedby={ariaDescribedBy}
-          aria-invalid={ariaInvalid}
+          aria-describedby={ownDescribedBy}
+          aria-invalid={ownInvalid}
           aria-required={required || undefined}
           onChange={onInput}
           onFocus={(event) => {

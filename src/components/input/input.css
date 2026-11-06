@@ -67,3 +67,9 @@ textarea.tumaet-ui-input {
   resize: vertical;
   display: block;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .tumaet-ui-input {
+    transition: none;
+  }
+}

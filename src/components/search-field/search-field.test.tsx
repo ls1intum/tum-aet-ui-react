@@ -1,12 +1,9 @@
+import { createRef } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../test-utils';
 import { FormField } from '../form-field/form-field';
 import { SearchField } from './search-field';
-
-const noop = (): void => {
-  // Intentionally does nothing.
-};
 
 describe('SearchField', () => {
   it('is a labelled search box using the translated placeholder', () => {
@@ -43,15 +40,15 @@ describe('SearchField', () => {
   });
 
   it('reflects a term set from outside and offers the clear button only with a term', () => {
-    const { rerender } = render(<SearchField value="" onChange={noop} />);
+    const { rerender } = render(<SearchField value="" />);
     expect(screen.queryByRole('button')).toBeNull();
-    rerender(<SearchField value="beta" onChange={noop} />);
+    rerender(<SearchField value="beta" />);
     expect(screen.getByRole('searchbox')).toHaveValue('beta');
     expect(screen.getByRole('button', { name: 'Clear search' })).toBeInTheDocument();
   });
 
   it('stays controlled when the parent keeps the value', async () => {
-    render(<SearchField value="a" onChange={noop} />);
+    render(<SearchField value="a" />);
     await userEvent.type(screen.getByRole('searchbox'), 'b');
     expect(screen.getByRole('searchbox')).toHaveValue('a');
   });
@@ -77,11 +74,25 @@ describe('SearchField', () => {
   });
 
   it('is named by the visible label of a FormField, not by its placeholder', () => {
-    render(
-      <FormField label="Course">
-        <SearchField />
-      </FormField>,
-    );
+    render(<FormField label="Course">{(control) => <SearchField {...control} />}</FormField>);
     expect(screen.getByRole('searchbox', { name: 'Course' })).toBeInTheDocument();
+  });
+
+  it('detaches replaced refs and honors callback cleanup on unmount', () => {
+    const objectRef = createRef<HTMLInputElement>();
+    const callbackRef = vi.fn<(node: HTMLInputElement | null) => void>();
+    const cleanup = vi.fn();
+    const cleanupRef = vi.fn(() => cleanup);
+    const { rerender, unmount } = render(<SearchField ref={objectRef} />);
+    const input = screen.getByRole('searchbox');
+    expect(objectRef.current).toBe(input);
+    rerender(<SearchField ref={callbackRef} />);
+    expect(objectRef.current).toBeNull();
+    expect(callbackRef).toHaveBeenLastCalledWith(input);
+    rerender(<SearchField ref={cleanupRef} />);
+    expect(callbackRef).toHaveBeenLastCalledWith(null);
+    expect(cleanupRef).toHaveBeenCalledWith(input);
+    unmount();
+    expect(cleanup).toHaveBeenCalledOnce();
   });
 });

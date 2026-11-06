@@ -1,13 +1,12 @@
 import type { InputHTMLAttributes, Ref, TextareaHTMLAttributes } from 'react';
 import { cx } from '../../internal/cx';
-import { useFormFieldControl } from '../form-field/form-field';
 
 export type InputSize = 'small' | 'default' | 'large';
 
 interface InputCommon {
-  /** Size variant: `small` (text-sm), `default` (text-base) or `large` (text-lg). */
+  /** Size variant: `small`, `default` or `large`. */
   size?: InputSize;
-  /** Marks the control invalid (also set by an enclosing invalid FormField). */
+  /** Caller-owned invalid appearance and default aria-invalid. */
   invalid?: boolean;
 }
 
@@ -19,50 +18,42 @@ export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
   ref?: Ref<HTMLTextAreaElement>;
 }
 
-/** Native `<input>` with the TUM AET UI look. Takes id, description and invalid state from an enclosing FormField. */
+/** Native input props, events, refs, validity and reset with AET appearance. */
 export function Input({
   size = 'default',
-  invalid,
-  id,
+  invalid = false,
   className,
-  'aria-describedby': describedBy,
   'aria-invalid': ariaInvalid,
   ...rest
 }: InputProps) {
-  const control = useFormFieldControl({ id, invalid, 'aria-describedby': describedBy, 'aria-invalid': ariaInvalid });
+  const resolvedInvalid = ariaInvalid ?? (invalid || undefined);
   return (
     <input
       {...rest}
-      id={control.id}
-      aria-describedby={control['aria-describedby']}
-      aria-invalid={control['aria-invalid']}
       data-size={size}
-      data-invalid={control.invalid || undefined}
       className={cx('tumaet-ui-input', className)}
+      aria-invalid={resolvedInvalid}
+      data-invalid={invalid || resolvedInvalid === true || resolvedInvalid === 'true' || undefined}
     />
   );
 }
 
-/** Native `<textarea>` with the same look as {@link Input}. */
+/** Native textarea with the same appearance as Input. */
 export function Textarea({
   size = 'default',
-  invalid,
-  id,
+  invalid = false,
   className,
-  'aria-describedby': describedBy,
   'aria-invalid': ariaInvalid,
   ...rest
 }: TextareaProps) {
-  const control = useFormFieldControl({ id, invalid, 'aria-describedby': describedBy, 'aria-invalid': ariaInvalid });
+  const resolvedInvalid = ariaInvalid ?? (invalid || undefined);
   return (
     <textarea
       {...rest}
-      id={control.id}
-      aria-describedby={control['aria-describedby']}
-      aria-invalid={control['aria-invalid']}
       data-size={size}
-      data-invalid={control.invalid || undefined}
       className={cx('tumaet-ui-input', className)}
+      aria-invalid={resolvedInvalid}
+      data-invalid={invalid || resolvedInvalid === true || resolvedInvalid === 'true' || undefined}
     />
   );
 }
