@@ -358,7 +358,7 @@ describe('InputNumber', () => {
     it('is described and named by an enclosing FormField', () => {
       render(
         <FormField label="Capacity" hint="Maximum group size">
-          <InputNumber />
+          {(control) => <InputNumber {...control} />}
         </FormField>,
       );
       const input = screen.getByRole('spinbutton', { name: 'Capacity' });

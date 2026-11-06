@@ -144,7 +144,7 @@ export const Controlled: Story = {
 export const InFormField: Story = {
   render: (args) => (
     <FormField label="Capacity" hint="Maximum tutorial group size">
-      <InputNumber {...args} aria-label={undefined} />
+      {(control) => <InputNumber {...args} {...control} aria-label={undefined} />}
     </FormField>
   ),
 };

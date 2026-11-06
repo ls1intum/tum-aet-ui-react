@@ -23,8 +23,10 @@ const meta = {
       description: {
         component:
           'Native `<input>` with the TUM AET UI look, in three sizes. `Textarea` has the same look for multi-line text. ' +
-          'Both take id, description and invalid state from an enclosing `FormField`; on their own they set `aria-invalid` ' +
-          'only while `invalid` is true. Give them a visible `<label htmlFor>` or an `aria-label`.',
+          'Both work with the flat `Field` parts or the convenient `FormField`; on their own they set `aria-invalid` ' +
+          'only while `invalid` is true. Native props, DOM event callbacks and element refs are preserved. ' +
+          'Use `defaultValue` for native reset; controlled values remain owned by the caller. ' +
+          'Give them a visible `<label htmlFor>` or an `aria-label`.',
       },
     },
   },

@@ -1,8 +1,8 @@
+import { useId } from 'react';
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import { Input } from '../input/input';
-import { Select } from '../select/select';
-import { FormField } from './form-field';
+import { Field, FieldDescription, FieldError, FieldLabel, FormField } from './form-field';
 
 function FormLayout(Story: Parameters<Decorator>[0]) {
   return (
@@ -19,11 +19,11 @@ const meta = {
     docs: {
       description: {
         component:
-          'Labelled wrapper around a single control. It owns the label, the required marker, and the hint and error text, ' +
-          'and wires `for`, `aria-describedby` and the invalid state to the control it wraps, so a minimal field needs no ids. ' +
-          'The error region is always rendered so its `role="alert"` announces when it appears; it stays hidden, and out of ' +
-          'the control description, while `invalid` is false. An error replaces the hint as the description. ' +
-          'Controls built on `useFormFieldControl` (`Input`, `Textarea`, `InputNumber`, `Checkbox`, `RadioButton`, `ToggleSwitch`, `SearchField`, ...) adopt it.',
+          'Native presentation parts with explicit id/htmlFor and ARIA associations. Validation state and error text belong to the caller or form library. ' +
+          'FormField offers a render-function child: spread its id, aria-describedby and aria-invalid onto one native labelable control. ' +
+          'The hint is replaced by the error while invalid. The required marker is decorative; set required on the control. ' +
+          'For custom IDs, groups or nonlabelable widget roots, compose the flat parts with explicit aria-labelledby as appropriate. ' +
+          'Field does not register controls, infer native validity, track dirty/touched state or synchronize resets.',
       },
     },
   },
@@ -32,11 +32,13 @@ const meta = {
     required: false,
     invalid: false,
     error: 'Enter a login',
+    children: (control) => <Input {...control} />,
   },
+  argTypes: { children: { control: false, description: 'Render function receiving native id and ARIA props.' } },
   decorators: [FormLayout],
   render: (args) => (
     <FormField {...args}>
-      <Input placeholder="ab12cde" />
+      {(control) => <Input {...control} required={args.required} placeholder="ab12cde" />}
     </FormField>
   ),
 } satisfies Meta<typeof FormField>;
@@ -45,15 +47,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
-
-export const Required: Story = {
-  args: { required: true },
-};
-
-export const WithHint: Story = {
-  args: { hint: 'Your TUM identifier, for example ab12cde.' },
-};
-
+export const Required: Story = { args: { required: true } };
+export const WithHint: Story = { args: { hint: 'Your TUM identifier, for example ab12cde.' } };
 export const Invalid: Story = {
   args: { invalid: true, required: true },
   play: async ({ canvas }) => {
@@ -62,17 +57,28 @@ export const Invalid: Story = {
     await expect(input).toHaveAccessibleDescription('Enter a login');
   },
 };
-
 export const InvalidReplacesTheHint: Story = {
   args: { invalid: true, hint: 'Your TUM identifier, for example ab12cde.' },
 };
 
-/** A select adopts the field's id and description exactly as a native input does. */
-export const WrappingASelect: Story = {
-  args: { label: 'Language', error: 'Pick a language' },
-  render: (args) => (
-    <FormField {...args}>
-      <Select options={['English', 'German']} placeholder="Select a language" />
-    </FormField>
-  ),
+function ComposedField() {
+  const base = useId();
+  return (
+    <Field data-invalid>
+      <FieldLabel htmlFor={`${base}-title`}>Course title</FieldLabel>
+      <Input id={`${base}-title`} name="title" required aria-invalid aria-describedby={`${base}-hint ${base}-error`} />
+      <FieldDescription id={`${base}-hint`}>Visible in the course catalogue.</FieldDescription>
+      <FieldError id={`${base}-error`}>Enter a course title.</FieldError>
+    </Field>
+  );
+}
+
+export const ComposedParts: Story = {
+  render: () => <ComposedField />,
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByText('Course title', { exact: true }));
+    const input = canvas.getByRole('textbox', { name: 'Course title' });
+    await expect(input).toHaveFocus();
+    await expect(input).toHaveAccessibleDescription('Visible in the course catalogue. Enter a course title.');
+  },
 };

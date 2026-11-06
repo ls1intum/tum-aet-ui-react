@@ -62,20 +62,25 @@ describe('Input', () => {
     expect(ref).toHaveBeenCalledWith(screen.getByRole('textbox'));
   });
 
-  it('merges its own aria-describedby with the one of the FormField', () => {
+  it('lets the caller combine FormField and additional descriptions', () => {
     render(
-      <FormField label="Name" hint="Hint">
-        <Input aria-describedby="extra" />
-      </FormField>,
+      <>
+        <span id="extra">Extra context</span>
+        <FormField label="Name" hint="Hint">
+          {(control) => (
+            <Input {...control} aria-describedby={['extra', control['aria-describedby']].filter(Boolean).join(' ')} />
+          )}
+        </FormField>
+      </>,
     );
-    expect(screen.getByLabelText('Name')).toHaveAccessibleDescription(/Hint/);
+    expect(screen.getByLabelText('Name')).toHaveAccessibleDescription('Extra context Hint');
     expect(screen.getByLabelText('Name').getAttribute('aria-describedby')).toMatch(/^extra /);
   });
 
-  it('marks a textarea invalid, takes the field id and sizes', () => {
+  it('spreads FormField associations onto a sized invalid textarea', () => {
     render(
       <FormField label="Notes" invalid error="Too short">
-        <Textarea size="small" rows={4} />
+        {(control) => <Textarea {...control} size="small" rows={4} />}
       </FormField>,
     );
     const area = screen.getByRole('textbox', { name: 'Notes' });
@@ -89,4 +94,70 @@ describe('Input', () => {
     render(<Input aria-label="x" invalid aria-invalid="false" />);
     expect(screen.getByRole('textbox')).toHaveAttribute('aria-invalid', 'false');
   });
+});
+
+it('forwards native props, event targets and textarea refs', async () => {
+  const inputRef = { current: null as HTMLInputElement | null };
+  const areaRef = { current: null as HTMLTextAreaElement | null };
+  const changes: string[] = [];
+  const onInput = vi.fn();
+  render(
+    <>
+      <Input
+        ref={inputRef}
+        aria-label="Title"
+        name="title"
+        autoComplete="off"
+        onChange={(event) => changes.push(`input:${event.currentTarget.value}`)}
+        onInput={onInput}
+      />
+      <Textarea
+        ref={areaRef}
+        aria-label="Details"
+        name="details"
+        rows={5}
+        maxLength={20}
+        onChange={(event) => changes.push(`textarea:${event.currentTarget.value}`)}
+        onInput={onInput}
+      />
+    </>,
+  );
+  await userEvent.type(screen.getByRole('textbox', { name: 'Title' }), 'A');
+  await userEvent.type(screen.getByRole('textbox', { name: 'Details' }), 'B');
+  expect(changes).toEqual(['input:A', 'textarea:B']);
+  expect(onInput).toHaveBeenCalledTimes(2);
+  expect(inputRef.current).toBe(screen.getByLabelText('Title'));
+  expect(areaRef.current).toBe(screen.getByLabelText('Details'));
+  expect(areaRef.current).toHaveAttribute('rows', '5');
+  expect(areaRef.current).toHaveAttribute('maxlength', '20');
+});
+
+it('passes React 19 callback cleanup and clears object refs for both native elements', () => {
+  const inputCleanup = vi.fn();
+  const areaCleanup = vi.fn();
+  const inputRef = vi.fn(() => inputCleanup);
+  const areaRef = vi.fn(() => areaCleanup);
+  const { rerender, unmount } = render(
+    <>
+      <Input aria-label="Title" ref={inputRef} />
+      <Textarea aria-label="Notes" ref={areaRef} />
+    </>,
+  );
+  expect(inputRef).toHaveBeenCalledWith(screen.getByLabelText('Title'));
+  expect(areaRef).toHaveBeenCalledWith(screen.getByLabelText('Notes'));
+  const inputObject = { current: null as HTMLInputElement | null };
+  const areaObject = { current: null as HTMLTextAreaElement | null };
+  rerender(
+    <>
+      <Input aria-label="Title" ref={inputObject} />
+      <Textarea aria-label="Notes" ref={areaObject} />
+    </>,
+  );
+  expect(inputCleanup).toHaveBeenCalledOnce();
+  expect(areaCleanup).toHaveBeenCalledOnce();
+  expect(inputObject.current).toBe(screen.getByLabelText('Title'));
+  expect(areaObject.current).toBe(screen.getByLabelText('Notes'));
+  unmount();
+  expect(inputObject.current).toBeNull();
+  expect(areaObject.current).toBeNull();
 });

@@ -1,0 +1,270 @@
+.tumaet-ui-autocomplete-container {
+  cursor: text;
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--tumaet-ui-spacing) * 1);
+  align-items: center;
+
+  box-sizing: border-box;
+  width: 100%;
+  min-height: calc(var(--tumaet-ui-spacing) * 10);
+  padding: calc(var(--tumaet-ui-spacing) * 2) calc(var(--tumaet-ui-spacing) * 3);
+  border: 1px solid var(--tumaet-ui-control-border-color);
+  border-radius: var(--tumaet-ui-radius-md);
+
+  font-family: var(--tumaet-ui-font-family);
+  font-size: var(--tumaet-ui-font-size-base);
+  line-height: var(--tumaet-ui-line-height-base);
+  color: var(--tumaet-ui-text-color);
+
+  background: var(--tumaet-ui-control-background);
+
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 0.15s;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+}
+
+.tumaet-ui-autocomplete-container:hover {
+  border-color: var(--tumaet-ui-control-border-hover-color);
+}
+
+.tumaet-ui-autocomplete-container[data-popup-open] {
+  border-color: var(--tumaet-ui-focus-color);
+}
+
+.tumaet-ui-autocomplete-container:focus-within {
+  outline: 2px solid var(--tumaet-ui-focus-color);
+  outline-offset: 2px;
+}
+
+.tumaet-ui-autocomplete-input {
+  flex: 1;
+
+  box-sizing: border-box;
+  min-width: calc(var(--tumaet-ui-spacing) * 16);
+  padding: 0;
+  border: 0;
+
+  font: inherit;
+  color: inherit;
+
+  background: transparent;
+}
+
+.tumaet-ui-autocomplete-input::placeholder {
+  color: var(--tumaet-ui-muted-color);
+}
+
+.tumaet-ui-autocomplete-input:disabled {
+  cursor: default;
+}
+
+.tumaet-ui-autocomplete-chip {
+  display: inline-flex;
+  gap: calc(var(--tumaet-ui-spacing) * 1);
+  align-items: center;
+
+  max-width: 100%;
+  padding: calc(var(--tumaet-ui-spacing) * 1) calc(var(--tumaet-ui-spacing) * 2);
+  border-radius: var(--tumaet-ui-radius-2xl);
+
+  font-size: var(--tumaet-ui-font-size-sm);
+  line-height: var(--tumaet-ui-line-height-sm);
+  color: var(--tumaet-ui-text-color);
+
+  background: var(--tumaet-ui-hover-background);
+}
+
+.tumaet-ui-autocomplete-chip:has(.tumaet-ui-autocomplete-chip-remove) {
+  padding-inline-end: calc(var(--tumaet-ui-spacing) * 1);
+}
+
+.tumaet-ui-autocomplete-chip-label {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tumaet-ui-autocomplete-chip-remove {
+  cursor: pointer;
+
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+
+  line-height: 1;
+  color: inherit;
+
+  appearance: none;
+  background: transparent;
+}
+
+.tumaet-ui-autocomplete-chip-remove:focus-visible {
+  outline: 2px solid var(--tumaet-ui-focus-color);
+  outline-offset: 2px;
+}
+
+.tumaet-ui-autocomplete-container[data-size='small'] {
+  min-height: calc(var(--tumaet-ui-spacing) * 8);
+  padding: calc(var(--tumaet-ui-spacing) * 1) calc(var(--tumaet-ui-spacing) * 2.5);
+  font-size: var(--tumaet-ui-font-size-sm);
+  line-height: var(--tumaet-ui-line-height-sm);
+}
+
+.tumaet-ui-autocomplete-container[data-size='large'] {
+  min-height: calc(var(--tumaet-ui-spacing) * 12);
+  padding: calc(var(--tumaet-ui-spacing) * 2) calc(var(--tumaet-ui-spacing) * 3.5);
+  font-size: var(--tumaet-ui-font-size-lg);
+  line-height: var(--tumaet-ui-line-height-lg);
+}
+
+.tumaet-ui-autocomplete-container[data-variant='outlined'] {
+  border-color: var(--tumaet-ui-primary-color);
+  color: var(--tumaet-ui-accent-color);
+  background: transparent;
+}
+
+.tumaet-ui-combobox-chips {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: calc(var(--tumaet-ui-spacing) * 1);
+  align-items: center;
+
+  min-width: 0;
+}
+
+.tumaet-ui-combobox-trigger,
+.tumaet-ui-combobox-clear {
+  cursor: pointer;
+
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+  border: 0;
+
+  font: inherit;
+  color: inherit;
+
+  background: transparent;
+}
+
+.tumaet-ui-combobox-trigger:disabled,
+.tumaet-ui-combobox-clear:disabled,
+.tumaet-ui-autocomplete-chip-remove:disabled {
+  cursor: default;
+}
+
+.tumaet-ui-autocomplete-input:focus-visible,
+.tumaet-ui-combobox-trigger:focus-visible,
+.tumaet-ui-combobox-clear:focus-visible,
+.tumaet-ui-autocomplete-chip:focus-visible {
+  outline: 2px solid var(--tumaet-ui-focus-color);
+  outline-offset: 2px;
+}
+
+.tumaet-ui-combobox-positioner {
+  z-index: 1100;
+}
+
+.tumaet-ui-autocomplete-panel {
+  overflow-y: auto;
+
+  box-sizing: border-box;
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI's public anchor measurement. */
+  min-width: var(--anchor-width);
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI's public collision measurement. */
+  max-height: var(--available-height);
+  border: 1px solid var(--tumaet-ui-border-color);
+  border-radius: var(--tumaet-ui-radius-md);
+
+  font-family: var(--tumaet-ui-font-family);
+  font-size: var(--tumaet-ui-font-size-base);
+  line-height: var(--tumaet-ui-line-height-base);
+  color: var(--tumaet-ui-text-color);
+
+  background: var(--tumaet-ui-overlay-background);
+  box-shadow: var(--tumaet-ui-shadow-lg);
+}
+
+.tumaet-ui-combobox-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--tumaet-ui-spacing) * 0.5);
+
+  max-height: 15rem;
+  padding: calc(var(--tumaet-ui-spacing) * 1);
+}
+
+.tumaet-ui-combobox-list[data-empty] {
+  padding: 0;
+}
+
+.tumaet-ui-combobox-option {
+  cursor: pointer;
+
+  display: flex;
+  gap: calc(var(--tumaet-ui-spacing) * 2);
+  align-items: center;
+
+  padding: calc(var(--tumaet-ui-spacing) * 2) calc(var(--tumaet-ui-spacing) * 3);
+}
+
+.tumaet-ui-combobox-option[data-selected] {
+  color: var(--tumaet-ui-highlight-color);
+  background: var(--tumaet-ui-highlight-background);
+}
+
+.tumaet-ui-combobox-option[data-highlighted] {
+  color: var(--tumaet-ui-highlight-color);
+  background: var(--tumaet-ui-highlight-focus-background);
+}
+
+.tumaet-ui-combobox-option[data-disabled] {
+  cursor: not-allowed;
+  color: var(--tumaet-ui-disabled-color);
+  background: transparent;
+}
+
+.tumaet-ui-combobox-option-label {
+  overflow: hidden;
+  flex: 1;
+
+  min-width: 0;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tumaet-ui-combobox-empty {
+  padding: calc(var(--tumaet-ui-spacing) * 2) calc(var(--tumaet-ui-spacing) * 3);
+  color: var(--tumaet-ui-muted-color);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tumaet-ui-autocomplete-container {
+    transition: none;
+  }
+}
+
+.tumaet-ui-autocomplete-container:has([aria-invalid='true']) {
+  border-color: var(--tumaet-ui-state-danger);
+}
+
+.tumaet-ui-autocomplete-container[data-disabled] {
+  cursor: default;
+  border-color: var(--tumaet-ui-control-border-color);
+  color: var(--tumaet-ui-disabled-color);
+  background: var(--tumaet-ui-disabled-background);
+}

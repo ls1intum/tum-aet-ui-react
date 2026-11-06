@@ -1,4 +1,3 @@
-/* Shared by select, multi-select and autocomplete. */
 .tumaet-ui-listbox {
   overflow-y: auto;
   display: flex;

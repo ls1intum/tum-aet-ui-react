@@ -9,10 +9,19 @@
   box-sizing: border-box;
   width: calc(var(--tumaet-ui-spacing, 0.25rem) * 10);
   height: calc(var(--tumaet-ui-spacing, 0.25rem) * 6);
+  padding: 0;
+  border: 0;
+
+  font: inherit;
+  vertical-align: middle;
+}
+
+.tumaet-ui-toggle-switch-track {
+  position: absolute;
+  inset: 0;
+
   border: 1px solid transparent;
   border-radius: 30px;
-
-  vertical-align: middle;
 
   background-color: var(--tumaet-ui-control-border-color);
   outline-color: transparent;
@@ -24,40 +33,22 @@
     outline-color 0.2s;
 }
 
-.tumaet-ui-toggle-switch[data-checked='true'] {
+.tumaet-ui-toggle-switch-input:checked + .tumaet-ui-toggle-switch-track {
   background-color: var(--tumaet-ui-primary-color);
 }
 
-.tumaet-ui-toggle-switch[data-invalid] {
+.tumaet-ui-toggle-switch-input[aria-invalid='true'] + .tumaet-ui-toggle-switch-track {
   border-color: var(--tumaet-ui-state-danger);
 }
 
-.tumaet-ui-toggle-switch[data-disabled] {
+.tumaet-ui-toggle-switch:has(:disabled) {
   cursor: default;
   opacity: 0.6;
 }
 
-.tumaet-ui-toggle-switch:has(.tumaet-ui-toggle-switch-input:focus-visible) {
+.tumaet-ui-toggle-switch-input:focus-visible + .tumaet-ui-toggle-switch-track {
   outline: 2px solid var(--tumaet-ui-focus-color);
   outline-offset: 2px;
-}
-
-.tumaet-ui-toggle-switch-input {
-  cursor: pointer;
-
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-
-  width: 100%;
-  height: 100%;
-  margin: 0;
-
-  opacity: 0;
-}
-
-.tumaet-ui-toggle-switch-input:disabled {
-  cursor: default;
 }
 
 .tumaet-ui-toggle-switch-handle {
@@ -77,24 +68,49 @@
     inset-inline-start 0.2s;
 }
 
-.tumaet-ui-toggle-switch[data-checked='true'] .tumaet-ui-toggle-switch-handle {
+.tumaet-ui-toggle-switch-input:checked + .tumaet-ui-toggle-switch-track .tumaet-ui-toggle-switch-handle {
   inset-inline-start: calc(var(--tumaet-ui-spacing, 0.25rem) * 5);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tumaet-ui-toggle-switch,
+  .tumaet-ui-toggle-switch-track,
   .tumaet-ui-toggle-switch-handle {
-    transition-property: background-color;
+    transition: none;
   }
 }
 
 @media (forced-colors: active) {
-  .tumaet-ui-toggle-switch-input {
-    appearance: auto;
-    opacity: 1;
+  .tumaet-ui-toggle-switch-track {
+    border-color: ButtonText;
+    forced-color-adjust: none;
+    background: Canvas;
+  }
+
+  .tumaet-ui-toggle-switch-input:checked + .tumaet-ui-toggle-switch-track {
+    background: Highlight;
   }
 
   .tumaet-ui-toggle-switch-handle {
-    display: none;
+    background: ButtonText;
   }
+
+  .tumaet-ui-toggle-switch-input:checked + .tumaet-ui-toggle-switch-track .tumaet-ui-toggle-switch-handle {
+    background: HighlightText;
+  }
+}
+
+.tumaet-ui-toggle-switch-input {
+  cursor: inherit;
+
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+  margin: 0;
+
+  font: inherit;
+
+  opacity: 0;
 }

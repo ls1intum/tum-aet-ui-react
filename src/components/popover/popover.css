@@ -1,11 +1,34 @@
+.tumaet-ui-popover-backdrop {
+  position: fixed;
+  z-index: 1100;
+  inset: 0;
+  background: rgb(0 0 0 / 32%);
+}
+
+.tumaet-ui-popover-positioner {
+  z-index: 1100;
+}
+
 .tumaet-ui-popover-panel {
-  transform-origin: top center;
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI's public positioning variable. */
+  transform-origin: var(--transform-origin);
+
+  overflow-y: auto;
 
   box-sizing: border-box;
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI's public collision measurement. */
+  max-width: var(--available-width);
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI's public collision measurement. */
+  max-height: var(--available-height);
+  border: 1px solid var(--tumaet-ui-border-color);
   border-radius: var(--tumaet-ui-radius-md);
 
+  font-family: var(--tumaet-ui-font-family);
+  font-size: var(--tumaet-ui-font-size-base);
+  line-height: var(--tumaet-ui-line-height-base);
   color: var(--tumaet-ui-text-color);
 
+  background: var(--tumaet-ui-overlay-background);
   box-shadow: var(--tumaet-ui-shadow-lg);
 
   animation: tumaet-ui-popover-in 160ms ease-out;
@@ -15,21 +38,11 @@
   padding: calc(var(--tumaet-ui-spacing) * 3);
 }
 
+.tumaet-ui-popover-trigger:focus-visible,
+.tumaet-ui-popover-close:focus-visible,
 .tumaet-ui-popover-panel:focus-visible {
-  outline: none;
-}
-
-/* The panel grows from the edge nearest its trigger: `data-side` is the side it sits on. */
-.tumaet-ui-popover-panel[data-side='top'] {
-  transform-origin: bottom center;
-}
-
-.tumaet-ui-popover-panel[data-side='left'] {
-  transform-origin: center right;
-}
-
-.tumaet-ui-popover-panel[data-side='right'] {
-  transform-origin: center left;
+  outline: 2px solid var(--tumaet-ui-focus-color);
+  outline-offset: 2px;
 }
 
 @keyframes tumaet-ui-popover-in {
@@ -48,4 +61,9 @@
   .tumaet-ui-popover-panel {
     animation: none;
   }
+}
+
+.tumaet-ui-popover-title,
+.tumaet-ui-popover-description {
+  margin: 0;
 }

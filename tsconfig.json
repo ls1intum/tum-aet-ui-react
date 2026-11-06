@@ -15,5 +15,5 @@
     "noEmit": true,
     "types": ["vitest/globals", "@testing-library/jest-dom", "vite/client"]
   },
-  "include": ["src", "playground", ".storybook/**/*", "scripts/*.ts", "vite.config.ts"]
+  "include": ["src", "playground", ".storybook/**/*", "scripts/*.ts", "vite*.config.ts"]
 }

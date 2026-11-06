@@ -1,15 +1,11 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode, useEffect } from 'react';
 import { expectNoA11yViolations } from '../../test-utils';
 import { ConfirmDialog, ConfirmProvider, useConfirm, type ConfirmationRequest } from './confirm-dialog';
 
-const noop = (): void => {
-  // Intentionally does nothing.
-};
-
 const base: ConfirmationRequest = {
-  header: 'Delete?',
+  title: 'Delete?',
   message: 'Cannot be undone.',
   acceptLabel: 'Delete',
   rejectLabel: 'Cancel',
@@ -32,7 +28,6 @@ function Host({ request = base, results }: { request?: ConfirmationRequest; resu
 type Confirm = ReturnType<typeof useConfirm>;
 const captured: { current: Confirm | null } = { current: null };
 
-/** Hands the `confirm` function of the enclosing provider to the test body. */
 function Grab() {
   const confirm = useConfirm();
   useEffect(() => {
@@ -89,10 +84,39 @@ describe('ConfirmDialog', () => {
     await ask();
     await userEvent.click(screen.getByRole('button', { name: 'Close' }));
     await ask();
-    fireEvent(screen.getByRole('alertdialog'), new Event('cancel', { cancelable: true }));
+    await userEvent.keyboard('{Escape}');
     await flush();
     expect(results).toEqual([false, false, false]);
     expect(reject).toHaveBeenCalledTimes(3);
+  });
+
+  it('initially focuses rejection, ignores backdrop presses, and restores the opener after Escape', async () => {
+    mountHost();
+    const opener = screen.getByRole('button', { name: 'Ask' });
+    await ask();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus());
+    const backdrop = document.querySelector('.tumaet-ui-dialog-backdrop');
+    if (!(backdrop instanceof HTMLElement)) throw new Error('Missing backdrop');
+    await userEvent.click(backdrop);
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(opener).toHaveFocus());
+  });
+
+  it('does not settle a dismissal canceled through upstream event details', async () => {
+    const results: boolean[] = [];
+    render(
+      <ConfirmProvider>
+        <Host results={results} />
+        <ConfirmDialog onOpenChange={(_open, details) => details.cancel()} />
+      </ConfirmProvider>,
+    );
+    await ask();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    expect(results).toEqual([]);
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(results).toEqual([false]);
   });
 
   it('routes requests by key and shows the icon decoratively with severities', async () => {
@@ -123,7 +147,7 @@ describe('ConfirmDialog', () => {
     );
     const confirm = grabbedConfirm();
     const first = confirm(base);
-    const second = confirm({ ...base, header: 'Second' });
+    const second = confirm({ ...base, title: 'Second' });
     await expect(first).resolves.toBe(false);
     expect(await screen.findByRole('alertdialog', { name: 'Second' })).toBeInTheDocument();
     void second;
@@ -139,14 +163,14 @@ describe('ConfirmDialog', () => {
       </ConfirmProvider>,
     );
     const confirm = grabbedConfirm();
-    act(() => void confirm({ ...base, header: 'A', message: 'request-a', key: 'a', reject: rejectA }));
-    act(() => void confirm({ ...base, header: 'B', message: 'request-b', key: 'b' }));
+    act(() => void confirm({ ...base, title: 'A', message: 'request-a', key: 'a', reject: rejectA }));
+    act(() => void confirm({ ...base, title: 'B', message: 'request-b', key: 'b' }));
     expect(screen.getByRole('alertdialog', { name: 'A', hidden: true })).toBeInTheDocument();
     expect(screen.getByRole('alertdialog', { name: 'B' })).toBeInTheDocument();
     expect(rejectA).not.toHaveBeenCalled();
   });
 
-  it('renders the message as a single span that keeps line breaks and a custom accept label and severity', async () => {
+  it('preserves message line breaks, custom labels and button severities', async () => {
     mountHost({ ...base, message: 'First line\nSecond line', acceptLabel: 'Yes', rejectSeverity: 'danger' });
     await ask();
     const message = document.querySelector('.tumaet-ui-confirm-dialog-message')!;
@@ -171,10 +195,93 @@ describe('ConfirmDialog', () => {
     expect(results).toEqual([]);
   });
 
+  it('keeps effect-driven requests usable after StrictMode effect replay', async () => {
+    const decisions: boolean[] = [];
+    function EffectRequest() {
+      const confirm = useConfirm();
+      useEffect(() => {
+        void confirm(base).then((value) => decisions.push(value));
+      }, [confirm]);
+      return null;
+    }
+    render(
+      <StrictMode>
+        <ConfirmProvider>
+          <EffectRequest />
+          <ConfirmDialog />
+        </ConfirmProvider>
+      </StrictMode>,
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(decisions).toEqual([false, true]));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
   it('throws outside a provider', () => {
-    const error = vi.spyOn(console, 'error').mockImplementation(noop);
+    const error = vi.spyOn(console, 'error').mockImplementation(vi.fn());
     expect(() => render(<ConfirmDialog />)).toThrow(/ConfirmProvider/);
     error.mockRestore();
+  });
+
+  it('settles every pending request on provider unmount and ignores retained calls', async () => {
+    const reject = vi.fn();
+    const { unmount } = render(
+      <ConfirmProvider>
+        <Grab />
+        <ConfirmDialog />
+      </ConfirmProvider>,
+    );
+    const confirm = grabbedConfirm();
+    let first!: Promise<boolean>;
+    let keyed!: Promise<boolean>;
+    act(() => {
+      first = confirm({ ...base, reject });
+      keyed = confirm({ ...base, key: 'other', reject });
+    });
+    unmount();
+    await expect(first).resolves.toBe(false);
+    await expect(keyed).resolves.toBe(false);
+    await expect(confirm(base)).resolves.toBe(false);
+    expect(reject).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects callback failures without blocking replacement or future confirmations', async () => {
+    const failure = new Error('callback failed');
+    render(
+      <ConfirmProvider>
+        <Grab />
+        <ConfirmDialog />
+      </ConfirmProvider>,
+    );
+    const confirm = grabbedConfirm();
+    let first!: Promise<boolean>;
+    let second!: Promise<boolean>;
+    act(() => {
+      first = confirm({
+        ...base,
+        reject: () => {
+          throw failure;
+        },
+      });
+      second = confirm({
+        ...base,
+        title: 'Replacement',
+        accept: async () => {
+          await Promise.reject(failure);
+        },
+      });
+    });
+    await expect(first).rejects.toBe(failure);
+    const secondFailure = second.catch((error: unknown) => error);
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(await secondFailure).toBe(failure);
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    let third!: Promise<boolean>;
+    act(() => {
+      third = confirm(base);
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await expect(third).resolves.toBe(false);
   });
 
   it('has no accessibility violations', async () => {

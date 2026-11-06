@@ -1,8 +1,8 @@
-export * from './components/autocomplete';
 export * from './components/button';
 export * from './components/card';
 export * from './components/checkbox';
 export * from './components/chip';
+export * from './components/combobox';
 export * from './components/confirm-dialog';
 export * from './components/date-picker';
 export * from './components/dialog';
@@ -15,7 +15,6 @@ export * from './components/input';
 export * from './components/list';
 export * from './components/menu';
 export * from './components/message';
-export * from './components/multi-select';
 export * from './components/paginator';
 export * from './components/panel';
 export * from './components/popover';
@@ -31,6 +30,7 @@ export * from './components/tabs';
 export * from './components/tag';
 export * from './components/toggle-switch';
 export * from './components/tooltip';
+export { DirectionProvider, type DirectionProviderProps } from '@base-ui/react/direction-provider';
 export {
   TumAetUiI18nProvider,
   useTranslate,

@@ -1,92 +1,59 @@
+import { createRef } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../test-utils';
-import { FormField } from '../form-field/form-field';
+import { Field, FieldError, FieldLabel } from '../form-field/form-field';
 import { ToggleSwitch } from './toggle-switch';
 
 describe('ToggleSwitch', () => {
-  it('has role switch and toggles on click', async () => {
-    const onChange = vi.fn();
-    render(<ToggleSwitch aria-label="Notifications" onChange={onChange} />);
-    const sw = screen.getByRole('switch', { name: 'Notifications' });
-    expect(sw).not.toBeChecked();
-    await userEvent.click(sw);
-    expect(sw).toBeChecked();
-    expect(onChange).toHaveBeenCalledWith(true, expect.anything());
-  });
-
-  it('toggles with Space', async () => {
-    render(<ToggleSwitch aria-label="Notifications" defaultChecked />);
+  it('toggles with Space and reports a native input change event', async () => {
+    const states: boolean[] = [];
+    const change = vi.fn<NonNullable<React.ComponentProps<typeof ToggleSwitch>['onChange']>>((event) => {
+      expect(event.currentTarget).toBe(screen.getByRole('switch'));
+      states.push(event.currentTarget.checked);
+    });
+    render(<ToggleSwitch aria-label="Mail" defaultChecked onChange={change} />);
     await userEvent.tab();
     await userEvent.keyboard(' ');
+    expect(states).toEqual([false]);
     expect(screen.getByRole('switch')).not.toBeChecked();
   });
 
-  it('does nothing when disabled', async () => {
-    render(<ToggleSwitch aria-label="Notifications" disabled />);
-    await userEvent.click(screen.getByRole('switch'));
-    expect(screen.getByRole('switch')).not.toBeChecked();
-  });
-
-  it('has no axe violations', async () => {
-    const { container } = render(
+  it('keeps disabled and readonly controls unchanged and controlled state with its caller', async () => {
+    const change = vi.fn();
+    render(
       <>
-        <label htmlFor="mail-switch">
-          Mail <ToggleSwitch id="mail-switch" />
-        </label>
-        <ToggleSwitch aria-label="B" defaultChecked />
+        <ToggleSwitch aria-label="Disabled" disabled onChange={change} />
+        <ToggleSwitch aria-label="Read only" readOnly onChange={change} />
+        <ToggleSwitch aria-label="Controlled" checked={false} onChange={change} />
       </>,
     );
+    await userEvent.click(screen.getByRole('switch', { name: 'Disabled' }));
+    await userEvent.click(screen.getByRole('switch', { name: 'Read only' }));
+    expect(change).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('switch', { name: 'Controlled' }));
+    expect(change).toHaveBeenCalledWith(expect.objectContaining({ type: 'change' }));
+    expect(screen.getByRole('switch', { name: 'Controlled' })).not.toBeChecked();
+  });
+
+  it('uses explicit Field associations and forwards the native input ref with cleanup', async () => {
+    const input = createRef<HTMLInputElement>();
+    const { container, unmount } = render(
+      <Field data-invalid>
+        <FieldLabel htmlFor="mail">Mail</FieldLabel>
+        <ToggleSwitch ref={input} id="mail" aria-describedby="mail-error" aria-invalid />
+        <FieldError id="mail-error">Not available</FieldError>
+      </Field>,
+    );
+    const toggle = screen.getByRole('switch', { name: 'Mail' });
+    expect(input.current).toBe(toggle);
+    expect(input.current).toBeInstanceOf(HTMLInputElement);
+    expect(toggle).toHaveAttribute('aria-invalid', 'true');
+    expect(toggle).toHaveAccessibleDescription('Not available');
+    await userEvent.click(screen.getByText('Mail'));
+    expect(toggle).toBeChecked();
     await expectNoA11yViolations(container);
-  });
-
-  it('exposes switch semantics on a native checkbox and reflects the state in data-checked', async () => {
-    render(<ToggleSwitch aria-label="Mail" />);
-    const sw = screen.getByRole('switch');
-    expect(sw).toHaveAttribute('type', 'checkbox');
-    const root = sw.parentElement!;
-    expect(root).toHaveAttribute('data-checked', 'false');
-    await userEvent.click(sw);
-    expect(root).toHaveAttribute('data-checked', 'true');
-    await userEvent.click(sw);
-    expect(root).toHaveAttribute('data-checked', 'false');
-  });
-
-  it('stays as the parent says while controlled', async () => {
-    const onChange = vi.fn();
-    render(<ToggleSwitch aria-label="Mail" checked={false} onChange={onChange} />);
-    await userEvent.click(screen.getByRole('switch'));
-    expect(onChange).toHaveBeenCalledWith(true, expect.anything());
-    expect(screen.getByRole('switch')).not.toBeChecked();
-  });
-
-  it('is named by aria-labelledby and a label for the id, and marks the disabled state', async () => {
-    const onChange = vi.fn();
-    render(
-      <>
-        <label id="lbl" htmlFor="sw">
-          Email notifications
-        </label>
-        <ToggleSwitch id="sw" aria-labelledby="lbl" onChange={onChange} />
-        <ToggleSwitch aria-label="Off" disabled />
-      </>,
-    );
-    const sw = screen.getByRole('switch', { name: 'Email notifications' });
-    await userEvent.click(screen.getByText('Email notifications'));
-    expect(sw).toBeChecked();
-    const disabled = screen.getByRole('switch', { name: 'Off' });
-    expect(disabled).toBeDisabled();
-    expect(disabled.parentElement).toHaveAttribute('data-disabled');
-  });
-
-  it('takes description and invalid state from a FormField', () => {
-    render(
-      <FormField label="Mail" hint="Weekly digest" invalid error="Not available">
-        <ToggleSwitch />
-      </FormField>,
-    );
-    const sw = screen.getByRole('switch', { name: 'Mail' });
-    expect(sw).toHaveAttribute('aria-invalid', 'true');
-    expect(sw).toHaveAccessibleDescription('Not available');
+    unmount();
+    expect(input.current).toBeNull();
   });
 });

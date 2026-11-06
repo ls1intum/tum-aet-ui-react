@@ -33,6 +33,7 @@
 }
 
 .tumaet-ui-form-field-hint {
+  margin: 0;
   font-size: var(--tumaet-ui-font-size-sm);
   line-height: var(--tumaet-ui-line-height-sm);
   color: var(--tumaet-ui-muted-color);
@@ -44,7 +45,6 @@
   color: var(--tumaet-ui-state-danger);
 }
 
-/* The error region stays in the DOM so role="alert" announces when it appears. */
 .tumaet-ui-form-field [hidden] {
   display: none;
 }
