@@ -1,6 +1,6 @@
 # TUM AET UI for React
 
-React implementation of the AET design system, sharing tokens and class names with `@tumaet/ui-angular` in Artemis (`packages/tum-aet-ui`). React and React DOM are peers; Base UI owns generic interactive behaviour.
+React implementation of the AET design system, sharing tokens and class names with `@tumaet/ui-angular` in Artemis (`packages/tum-aet-ui`). React and React DOM are peers. Native form controls use HTML/React behaviour; Base UI owns generic interaction for migrated complex widgets.
 
 ## Component conventions
 
@@ -9,7 +9,7 @@ React implementation of the AET design system, sharing tokens and class names wi
 - Typography comes from the tokens; form controls use `font: inherit`. Support both themes, reduced motion and visible `:focus-visible` outlines (`2px solid var(--tumaet-ui-focus-color)`, offset 2px).
 - Generated UI text comes from `useTranslate()` and the existing `tumAetUi.*` keys in `src/internal/i18n.tsx`. If a required key is absent, expose an English fallback through a prop and report the missing key.
 - Use React 19 refs and merge classes with `cx`. Follow [the API and migration policy](docs/migration-policy.md) for state callbacks, typed values, compound parts and compatibility.
-- Use Base UI's public primitives for migrated keyboard, focus, dismissal and positioning behaviour. Keep shared legacy helpers only while they have consumers.
+- Use native inputs for simple form controls, with native events, refs and uncontrolled state/reset. Use Base UI's public primitives for migrated complex-widget keyboard, focus, dismissal and positioning behaviour. Keep shared legacy helpers only while they have consumers.
 - Icons are `ReactNode` props. Existing SVGs are in `src/internal/icons.tsx`; additional Font Awesome Free solid paths can be copied from `~/Projects/Artemis/node_modules/@fortawesome/free-solid-svg-icons` into the component folder.
 - Base UI is the only approved direct runtime dependency. Other dependencies need maintainer agreement.
 

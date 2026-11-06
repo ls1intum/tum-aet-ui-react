@@ -1,1 +1,1 @@
-export { RadioButton, RadioGroup, type RadioButtonProps, type RadioGroupProps } from './radio-button';
+export { RadioButton, RadioGroup, type RadioButtonProps, type RadioGroupProps, type RadioValue } from './radio-button';

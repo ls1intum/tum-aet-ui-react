@@ -1,101 +1,123 @@
-import { render, screen } from '@testing-library/react';
+import { createRef } from 'react';
+import { renderToString } from 'react-dom/server';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../test-utils';
-import { FormField } from '../form-field/form-field';
+import { Field, FieldDescription, FieldError, FieldLabel } from '../form-field/form-field';
+import { RadioButton, RadioGroup } from '../radio-button/radio-button';
+import { ToggleSwitch } from '../toggle-switch/toggle-switch';
 import { Checkbox } from './checkbox';
 
-const noop = (): void => {
-  // Intentionally does nothing.
-};
-
 describe('Checkbox', () => {
-  it('toggles on click and calls onChange with the new state', async () => {
-    const onChange = vi.fn();
-    render(<Checkbox aria-label="Agree" onChange={onChange} />);
-    const box = screen.getByRole('checkbox', { name: 'Agree' });
-    await userEvent.click(box);
-    expect(box).toBeChecked();
-    expect(onChange).toHaveBeenCalledWith(true, expect.anything());
-  });
-
-  it('toggles with Space and stays controlled', async () => {
-    const onChange = vi.fn();
-    render(<Checkbox aria-label="Agree" checked={false} onChange={onChange} />);
+  it('reports native input change events and lets React own controlled selection', async () => {
+    const states: boolean[] = [];
+    const change = vi.fn<NonNullable<React.ComponentProps<typeof Checkbox>['onChange']>>((event) => {
+      expect(event.currentTarget).toBe(screen.getByRole('checkbox'));
+      expect(event.nativeEvent).toBeInstanceOf(Event);
+      states.push(event.currentTarget.checked);
+    });
+    const { rerender } = render(<Checkbox aria-label="Agree" onChange={change} />);
     await userEvent.tab();
     await userEvent.keyboard(' ');
-    expect(onChange).toHaveBeenCalledWith(true, expect.anything());
-    expect(screen.getByRole('checkbox')).not.toBeChecked();
-  });
-
-  it('exposes the indeterminate state without changing checked', () => {
-    render(<Checkbox aria-label="All" indeterminate />);
-    const box = screen.getByRole<HTMLInputElement>('checkbox');
-    expect(box.indeterminate).toBe(true);
-    expect(box).not.toBeChecked();
-  });
-
-  it('cannot be toggled when disabled', async () => {
-    render(<Checkbox aria-label="Agree" disabled />);
+    expect(states).toEqual([true]);
+    expect(screen.getByRole('checkbox')).toBeChecked();
+    rerender(<Checkbox key="controlled" aria-label="Agree" checked={false} onChange={change} />);
     await userEvent.click(screen.getByRole('checkbox'));
+    expect(states).toEqual([true, true]);
     expect(screen.getByRole('checkbox')).not.toBeChecked();
   });
 
-  it('has no axe violations', async () => {
+  it('keeps mixed state and native submission independent', () => {
+    const input = createRef<HTMLInputElement>();
+    const { container } = render(
+      <form>
+        <Checkbox name="all" aria-label="All" indeterminate defaultChecked ref={input} />
+      </form>,
+    );
+    expect(screen.getByRole('checkbox')).toBePartiallyChecked();
+    expect(input.current?.indeterminate).toBe(true);
+    expect(new FormData(container.querySelector('form')!).get('all')).toBe('on');
+  });
+
+  it('uses explicit Field labeling, descriptions and caller-owned invalid state', async () => {
     const { container } = render(
       <>
-        <Checkbox aria-label="A" defaultChecked />
-        <Checkbox aria-label="B" indeterminate />
-        <Checkbox aria-label="C" disabled />
+        <Field data-invalid>
+          <FieldLabel htmlFor="agree">Agree</FieldLabel>
+          <Checkbox id="agree" aria-describedby="agree-error" aria-invalid />
+          <FieldError id="agree-error">Acceptance required</FieldError>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="updates">Updates</FieldLabel>
+          <Checkbox id="updates" aria-describedby="updates-hint" />
+          <FieldDescription id="updates-hint">Weekly digest</FieldDescription>
+        </Field>
       </>,
-    );
-    await expectNoA11yViolations(container);
-  });
-
-  it('keeps the native indeterminate state after a click, as the parent owns it', async () => {
-    const onChange = vi.fn();
-    render(<Checkbox aria-label="All" indeterminate checked={false} onChange={onChange} />);
-    const box = screen.getByRole<HTMLInputElement>('checkbox');
-    await userEvent.click(box);
-    expect(onChange).toHaveBeenCalledWith(true, expect.anything());
-    expect(box.indeterminate).toBe(true);
-  });
-
-  it('forwards id, name and aria attributes, and keeps the description while disabled', () => {
-    render(<Checkbox id="accept" name="terms" aria-label="Accept terms" aria-describedby="hint" disabled />);
-    const box = screen.getByRole('checkbox', { name: 'Accept terms' });
-    expect(box).toHaveAttribute('id', 'accept');
-    expect(box).toHaveAttribute('name', 'terms');
-    expect(box).toHaveAttribute('aria-describedby', 'hint');
-    expect(box).toBeDisabled();
-  });
-
-  it('shows the tick when checked and the dash when indeterminate, the dash winning', () => {
-    const { container, rerender } = render(<Checkbox aria-label="x" />);
-    expect(container.querySelector('.tumaet-ui-checkbox-icon')).toBeNull();
-    rerender(<Checkbox aria-label="x" checked onChange={noop} />);
-    expect(container.querySelectorAll('.tumaet-ui-checkbox-icon')).toHaveLength(1);
-    const tick = container.querySelector('.tumaet-ui-checkbox-icon')!.innerHTML;
-    rerender(<Checkbox aria-label="x" checked indeterminate onChange={noop} />);
-    expect(container.querySelectorAll('.tumaet-ui-checkbox-icon')).toHaveLength(1);
-    expect(container.querySelector('.tumaet-ui-checkbox-icon')!.innerHTML).not.toBe(tick);
-  });
-
-  it('does not call onChange for a disabled toggle attempt', async () => {
-    const onChange = vi.fn();
-    render(<Checkbox aria-label="x" checked disabled onChange={onChange} />);
-    await userEvent.click(screen.getByRole('checkbox'));
-    expect(onChange).not.toHaveBeenCalled();
-    expect(screen.getByRole('checkbox')).toBeChecked();
-  });
-
-  it('takes id, description and invalid state from a FormField', () => {
-    render(
-      <FormField label="Agree" hint="Required to continue" invalid error="Accept the terms">
-        {(field) => <Checkbox {...field} />}
-      </FormField>,
     );
     const box = screen.getByRole('checkbox', { name: 'Agree' });
     expect(box).toHaveAttribute('aria-invalid', 'true');
-    expect(box).toHaveAccessibleDescription('Accept the terms');
+    expect(box).toHaveAccessibleDescription('Acceptance required');
+    expect(screen.getByRole('checkbox', { name: 'Updates' })).toHaveAccessibleDescription('Weekly digest');
+    await userEvent.click(screen.getByText('Agree'));
+    expect(box).toBeChecked();
+    await expectNoA11yViolations(container);
+  });
+
+  it('forwards native props and React 19 callback-ref cleanup to the actual input', async () => {
+    const cleanup = vi.fn();
+    const ref = vi.fn<(node: HTMLInputElement | null) => () => void>(() => cleanup);
+    const click = vi.fn();
+    const { unmount, rerender } = render(
+      <Checkbox
+        ref={ref}
+        aria-label="Agree"
+        onClick={click}
+        className="custom"
+        style={{ margin: 3 }}
+        data-test="input"
+      />,
+    );
+    const box = screen.getByRole('checkbox');
+    expect(box.tagName).toBe('INPUT');
+    expect(box).toHaveAttribute('data-test', 'input');
+    expect(box.parentElement).toHaveClass('custom');
+    expect(box.parentElement).toHaveStyle({ margin: '3px' });
+    rerender(<Checkbox ref={ref} aria-label="Agree" onClick={click} indeterminate />);
+    expect(ref).toHaveBeenCalledExactlyOnceWith(box);
+    expect(cleanup).not.toHaveBeenCalled();
+    expect(box).toBePartiallyChecked();
+    await userEvent.click(box);
+    expect(click).toHaveBeenCalledOnce();
+    unmount();
+    expect(cleanup).toHaveBeenCalledOnce();
+  });
+
+  it('server-renders explicitly labeled roots and native label targets before effects run', () => {
+    const view = renderToString(
+      <form>
+        <label id="ssr-agree-label" htmlFor="ssr-agree">
+          Agree
+        </label>
+        <Checkbox id="ssr-agree" aria-labelledby="ssr-agree-label" defaultChecked />
+        <label id="ssr-mail-label" htmlFor="ssr-mail">
+          Mail
+        </label>
+        <ToggleSwitch id="ssr-mail" aria-labelledby="ssr-mail-label" />
+        <RadioGroup name="size" aria-label="Size" defaultValue={1}>
+          <label id="ssr-small-label" htmlFor="ssr-small">
+            Small
+          </label>
+          <RadioButton id="ssr-small" aria-labelledby="ssr-small-label" value={1} />
+        </RadioGroup>
+      </form>,
+    );
+    const { container } = render(<div dangerouslySetInnerHTML={{ __html: view }} />);
+    const server = within(container);
+    expect(server.getByRole('checkbox', { name: 'Agree' })).toBeChecked();
+    expect(server.getByRole('switch', { name: 'Mail' })).not.toBeChecked();
+    expect(server.getByRole('radio', { name: 'Small' })).toBeChecked();
+    for (const label of container.querySelectorAll('label')) expect(label.control).toBeInstanceOf(HTMLInputElement);
+    const ids = [...container.querySelectorAll('[id]')].map((element) => element.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });

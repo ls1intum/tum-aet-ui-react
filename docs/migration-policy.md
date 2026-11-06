@@ -1,14 +1,14 @@
 # Component API and migration policy
 
-The library owns the AET appearance, composition, translations and domain logic. Base UI owns generic state, keyboard, focus, dismissal and positioning behaviour. React and React DOM are peers; Base UI is a normal runtime dependency.
+The library owns the AET appearance, composition, translations and domain logic. Native form controls use HTML/React state, events and form behaviour. Migrated complex widgets use Base UI for generic interaction, dismissal and positioning. React and React DOM are peers; Base UI is a normal runtime dependency.
 
 ## New and migrated components
 
 - Export compound parts as flat names, such as `Select`, `SelectTrigger` and `SelectPopup`. Simple presentation components and common composed patterns can remain props-driven.
-- Use `value/defaultValue/onValueChange`, `checked/defaultChecked/onCheckedChange` and `open/defaultOpen/onOpenChange`. Callbacks receive the new state followed by the supported Base UI event details; preserve cancellation. Native `Input` and `Textarea` keep DOM events.
+- Native `Input`, `Textarea`, `Checkbox` and `ToggleSwitch` use DOM events. Checkbox/switch selection uses `checked/defaultChecked/onChange`; refs target the input. `RadioGroup` distributes `value/defaultValue` to native radio inputs and reports `onValueChange(value, event)` with a React input change event. It requires an explicit name and holds no uncontrolled selection state. Other migrated widgets use their documented state callbacks and supported Base UI event details, including cancellation.
 - Type collection items, values and callbacks together. Prefer label and serialization functions to property-name strings. Specify equality and empty/multiple-value semantics. A generic root does not typecheck arbitrary JSX descendants: verify the actual supported typed path rather than claiming otherwise.
-- Forward element props and React 19 refs on the rendered part, and merge its class with `cx`. Keep appearance in tokens and the documented variant props; use upstream state attributes.
-- Controls must support native submission, disabled/read-only semantics and reset. Verify `FormData`, reset followed by rerender, and canceled reset for stateful controls.
+- Forward element props and React 19 refs on the rendered part, and merge its class with `cx`. Keep appearance in tokens and the documented variant props; use native pseudo-classes for native inputs and upstream state attributes for Base UI widgets.
+- Controls must support native submission, disabled/read-only semantics and reset. Verify `FormData`, reset followed by rerender, and canceled reset. Uncontrolled native inputs follow React/HTML `defaultChecked` semantics: changing defaults updates reset defaults; native radio exclusivity can also affect current selection when another option’s default changes. Controlled state and its reset policy remain caller-owned; native reset is not a change event. Do not mirror native uncontrolled selection in React state or reset adapters.
 - Preserve `tumAetUi.*` translations, accessible names and focus return. Portal inheritance follows the destination DOM: expose the upstream container option and demonstrate a host within the intended theme/direction boundary, outside clipping containers. See [theming](theming.mdx).
 
 ## API changes

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn } from 'storybook/test';
-import { FormField } from '../form-field/form-field';
+import { Field, FieldDescription, FieldLabel } from '../form-field/form-field';
 import { ToggleSwitch } from './toggle-switch';
 
 function InlineControl(Story: Parameters<Decorator>[0]) {
@@ -19,16 +19,15 @@ const meta = {
     docs: {
       description: {
         component:
-          'On/off switch built on `<input type="checkbox" role="switch">`, so Space toggles it and the state reaches assistive technology natively. ' +
-          'It needs an accessible name: a `<label htmlFor>`, `aria-label` or `aria-labelledby`. The handle respects `prefers-reduced-motion`, ' +
-          'and the native control is shown in forced-colors mode.',
+          'Native input with AET appearance. Use checked/defaultChecked and native onChange events. ' +
+          'ref targets the input; className/style target the visual wrapper. Other native props target the input. ' +
+          'Uncontrolled selection and reset follow HTML/React defaults; controlled state and reset belong to the caller.',
       },
     },
   },
   args: {
     checked: false,
     disabled: false,
-    invalid: false,
     onChange: fn(),
   },
   argTypes: { onChange: { control: false } },
@@ -49,9 +48,9 @@ const meta = {
           aria-labelledby="notification-label"
           {...args}
           checked={value}
-          onChange={(next, event) => {
-            setValue(next);
-            onChange?.(next, event);
+          onChange={(event) => {
+            onChange?.(event);
+            setValue(event.currentTarget.checked);
           }}
         />
       </>
@@ -69,7 +68,7 @@ export const Default: Story = {
     await expect(toggle).toHaveFocus();
     await userEvent.keyboard(' ');
     await expect(toggle).toBeChecked();
-    await expect(args.onChange).toHaveBeenCalledWith(true, expect.anything());
+    await expect(args.onChange).toHaveBeenCalledWith(expect.objectContaining({ type: 'change' }));
   },
 };
 
@@ -86,13 +85,15 @@ export const DisabledOff: Story = {
 };
 
 export const Invalid: Story = {
-  args: { invalid: true },
+  args: { 'aria-invalid': true },
 };
 
-export const InFormField: Story = {
+export const InField: Story = {
   render: () => (
-    <FormField label="Notifications" hint="Sent once a week">
-      {(field) => <ToggleSwitch {...field} />}
-    </FormField>
+    <Field>
+      <FieldLabel htmlFor="toggle-switch-field">Notifications</FieldLabel>
+      <ToggleSwitch id="toggle-switch-field" aria-describedby="toggle-switch-field-hint" />
+      <FieldDescription id="toggle-switch-field-hint">Sent once a week</FieldDescription>
+    </Field>
   ),
 };
