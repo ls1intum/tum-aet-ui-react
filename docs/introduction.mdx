@@ -8,19 +8,19 @@ React components and styles of the design system of the Applied Education Techno
 
 ## Install and use
 
-The package is not published to npm yet. Until then, install it from the repository or link it in a workspace.
+Install the package with `npm install @tumaet/ui-react`. React 19 and React DOM 19 are peer dependencies. The API may change during 0.x releases; see the migration policy before adopting APIs from an unreleased branch.
 
 ```tsx
 import '@tumaet/ui-react/styles.css';
 import { Button, Dialog } from '@tumaet/ui-react';
 ```
 
-Import the stylesheet once. Tokens, base rules and all component styles live in the `tumaet-ui` cascade layer. Declare application layer order before imports so resets stay below the library and overrides stay above it; see the Theming guide for plain CSS and Tailwind examples. Components have no runtime dependencies besides `react` and `react-dom` 19.
+Import the stylesheet once. Tokens, base rules and all component styles live in the `tumaet-ui` cascade layer. Declare application layer order before imports so resets stay below the library and overrides stay above it; see the Theming guide for plain CSS and Tailwind examples. React and React DOM 19 are peers; `@base-ui/react` is the approved runtime dependency for the phased behaviour migration. Existing components keep their current implementations and props until individually migrated.
 
 ## Principles
 
 - **Plain CSS and tokens.** Colours, spacing, radii, shadows and type sizes come from CSS custom properties. There is no CSS-in-JS and no Tailwind.
-- **Native platform features.** Modal dialogs use `<dialog>`, dates use `Intl`, popups are positioned by a small built-in helper.
+- **Behaviour foundation.** Current modal dialogs use `<dialog>` and popups use a built-in positioning helper. New and migrated interactive components use Base UI primitives; owned date and number formatting keeps using `Intl`.
 - **Accessibility is part of the component.** See the Accessibility page.
 - **Same look as the Angular library.** If a component differs from its Angular counterpart, it is documented on its page.
 

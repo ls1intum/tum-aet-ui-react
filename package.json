@@ -45,16 +45,17 @@
   "scripts": {
     "dev": "vite",
     "clean": "node -e \"require(\\\"node:fs\\\").rmSync(\\\"dist\\\",{recursive:true,force:true})\"",
-    "build": "pnpm run clean && vite build && tsc -p tsconfig.build.json && node scripts/fix-type-extensions.mjs && node scripts/build-styles.mjs",
+    "build": "pnpm run clean && vite build && tsc -p tsconfig.build.json && node scripts/fix-type-extensions.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:browser": "vitest run --config vitest.browser.config.ts",
+    "test:browser": "pnpm run build && vitest run --config vitest.browser.config.ts",
     "test:browser:install": "playwright install --with-deps chromium firefox webkit",
     "typecheck": "tsc && tsc -p tests/browser",
     "format": "prettier --write .",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build -o storybook-static",
-    "pack:check": "pnpm run build && node scripts/pack-check.mjs",
+    "pack:check": "pnpm run test:package && pnpm run build && node scripts/pack-check.mjs",
+    "test:package": "node --test scripts/*.test.mjs",
     "test:consumer": "node scripts/consumer/run.mjs",
     "prepublishOnly": "node --eval \"throw new Error(\\\"Publish only the validated tarball in build/package (see RELEASING.md).\\\")\"",
     "lint": "eslint . --max-warnings 0",
@@ -94,6 +95,7 @@
     "publint": "^0.3.12",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "semver": "7.8.6",
     "storybook": "^10.6.5",
     "stylelint": "18.0.0",
     "stylelint-config-clean-order": "^10.0.0",
@@ -104,5 +106,8 @@
     "vite": "^8.3.5",
     "vitest": "^5.1.0"
   },
-  "packageManager": "pnpm@12.16.1"
+  "packageManager": "pnpm@12.16.1",
+  "dependencies": {
+    "@base-ui/react": "^1.9.0"
+  }
 }

@@ -89,4 +89,4 @@ Until overlay integration addresses this, prefer a page-level theme for overlay-
 
 ## Maintaining the CSS entry
 
-`src/styles/index.css` is the shared layered entry for Storybook, the playground and the published stylesheet. Add new component CSS imports there once, in alphabetical order. `scripts/build-styles.mjs` validates completeness and layer assignments, then inlines those local imports into `dist/styles.css`; it leaves no network/package imports in the result. Component source CSS remains plain and unwrapped. Do not import those raw styles separately in an application, as that bypasses the layer contract.
+`src/styles/index.css` is the shared layered entry for Storybook, the playground and the published stylesheet. Add new component CSS imports there once, in alphabetical order. Vite builds that entry into `dist/styles.css`, resolving its local layered imports. Component source CSS remains plain and unwrapped. Do not import those raw styles separately in an application, as that bypasses the layer contract.

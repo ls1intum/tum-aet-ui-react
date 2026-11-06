@@ -1,6 +1,6 @@
 # Browser interaction tests
 
-Run the jsdom suite with `pnpm test`. Native browser interactions use a separate Vitest configuration:
+Run the jsdom suite with `pnpm test`. Native browser interactions use a separate Vitest configuration. `test:browser` builds the package first, and browser setup loads the emitted `dist/styles.css`:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -26,7 +26,7 @@ Restore the recorded value afterwards, or delete the override with `defaults del
 
 [Vitest Browser Mode](https://vitest.dev/guide/browser/) uses its [Playwright provider](https://vitest.dev/config/browser/playwright) and the existing Testing Library React renderer. Keep Vitest and its browser provider versions aligned; the provider declares an exact Vitest peer.
 
-Setup loads the shared layered `src/styles/index.css` entry. Fixtures stay outside `src` and published output. Setup preserves native dialog, focus, layout and scroll APIs and cleans up React after each test. Use native interactions and observable roles/state; geometry assertions poll actual rectangles rather than mocking layout.
+Fixtures stay outside `src` and published output. Setup preserves native dialog, focus, layout and scroll APIs and cleans up React after each test. Use native interactions and observable roles/state; geometry assertions poll actual rectangles rather than mocking layout.
 
 Vitest runs tests in an iframe. Establish initial keyboard focus inside it, then assert the subsequent focus transitions. Native dialog Tab boundaries can include browser chrome, so an immediate last-to-first wrap is not a portable assertion.
 
