@@ -236,7 +236,7 @@ function ScopedField(props: DatePickerProps) {
   const host = useRef<HTMLDivElement>(null);
   return (
     <div className="tumaet-ui-root" data-theme="dark" style={{ padding: 24 }}>
-      <div style={{ overflow: 'hidden', height: 64 }}>
+      <div style={{ overflow: 'hidden', height: 120 }}>
         <Field {...props} portalContainer={host} />
       </div>
       <div ref={host} />
