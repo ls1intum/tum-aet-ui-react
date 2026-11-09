@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { expectNoA11yViolations } from '../../test-utils';
@@ -32,14 +32,9 @@ function Example(props: DialogProps) {
 }
 
 describe('Dialog', () => {
-  it('names and describes the popup, dismisses with Escape and restores trigger focus', async () => {
-    render(<Example />);
-    const trigger = screen.getByRole('button', { name: 'Open' });
-    await userEvent.click(trigger);
+  it('exposes the popup title and description', () => {
+    render(<Example defaultOpen />);
     expect(screen.getByRole('dialog', { name: 'Settings' })).toHaveAccessibleDescription('Update your settings.');
-    await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(trigger).toHaveFocus();
   });
 
   it('preserves upstream details and cancellation for uncontrolled and controlled roots', async () => {

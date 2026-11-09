@@ -33,7 +33,7 @@
   border-color: var(--tumaet-ui-focus-color);
 }
 
-.tumaet-ui-autocomplete-container:focus-within {
+.tumaet-ui-autocomplete-container:has(.tumaet-ui-autocomplete-input:focus-visible) {
   outline: 2px solid var(--tumaet-ui-focus-color);
   outline-offset: 2px;
 }
@@ -165,7 +165,10 @@
   cursor: default;
 }
 
-.tumaet-ui-autocomplete-input:focus-visible,
+.tumaet-ui-autocomplete-input:focus-visible {
+  outline: none;
+}
+
 .tumaet-ui-combobox-trigger:focus-visible,
 .tumaet-ui-combobox-clear:focus-visible,
 .tumaet-ui-autocomplete-chip:focus-visible {

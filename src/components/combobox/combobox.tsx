@@ -30,7 +30,7 @@ export type ComboboxProps<Value, Multiple extends boolean = false> = Omit<
 const CollectionContext = createContext<ReactNode>(null);
 const ChipsContext = createContext<(() => ReactNode) | null>(null);
 
-/** Searchable selection. Query text is upstream inputValue, separate from the controlled value. */
+/** Searchable selection. Query text uses inputValue, separate from the controlled selection. */
 export function Combobox<Value, Multiple extends boolean = false>({
   items,
   value,
@@ -47,7 +47,7 @@ export function Combobox<Value, Multiple extends boolean = false>({
   const t = useTranslate();
   const internalActionsRef = useRef<BaseCombobox.Root.Actions | null>(null);
   const actionsRef = externalActionsRef ?? internalActionsRef;
-  // Upstream disables an open popup's interactions without closing it. Request closure through its public API.
+  // A disabled control should not leave an unusable popup open.
   useEffect(() => {
     if (disabled === true) actionsRef.current?.close();
   }, [disabled, actionsRef]);

@@ -4,6 +4,14 @@ import { expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { Button } from '../../src/components/button';
 import {
+  Dialog,
+  DialogTrigger,
+  DialogPortal,
+  DialogBackdrop,
+  DialogPopup,
+  DialogTitle,
+} from '../../src/components/dialog';
+import {
   Menu,
   MenuTrigger,
   MenuPortal,
@@ -279,3 +287,57 @@ test.each(['light', 'dark'] as const)(
     );
   },
 );
+
+test('menu and tooltip dismiss independently inside a dialog and preserve focus return', async () => {
+  render(
+    <Dialog>
+      <DialogTrigger>Open course</DialogTrigger>
+      <DialogPortal>
+        <DialogBackdrop />
+        <DialogPopup>
+          <DialogTitle>Course settings</DialogTitle>
+          <Menu>
+            <MenuTrigger>Course actions</MenuTrigger>
+            <MenuPortal>
+              <MenuPositioner>
+                <MenuPopup>
+                  <MenuItem>Rename course</MenuItem>
+                </MenuPopup>
+              </MenuPositioner>
+            </MenuPortal>
+          </Menu>
+          <Tooltip>
+            <TooltipTrigger aria-describedby="course-help">Course help</TooltipTrigger>
+            <TooltipPortal>
+              <TooltipPositioner>
+                <TooltipPopup id="course-help">Manage the current course</TooltipPopup>
+              </TooltipPositioner>
+            </TooltipPortal>
+          </Tooltip>
+        </DialogPopup>
+      </DialogPortal>
+    </Dialog>,
+  );
+  const opener = page.getByRole('button', { name: 'Open course' });
+  const actions = page.getByRole('button', { name: 'Course actions' });
+  const dialog = page.getByRole('dialog', { name: 'Course settings' });
+  await opener.click();
+  await expect.element(actions).toHaveFocus();
+  await userEvent.keyboard('{ArrowDown}');
+  await expect.element(page.getByRole('menuitem', { name: 'Rename course' })).toHaveFocus();
+  await userEvent.keyboard('{Escape}');
+  await expect.element(page.getByRole('menu')).not.toBeInTheDocument();
+  await expect.element(actions).toHaveFocus();
+  await expect.element(dialog).toBeVisible();
+  await userEvent.tab();
+  const help = page.getByRole('button', { name: 'Course help' });
+  await expect.element(help).toHaveFocus();
+  await expect.element(page.getByRole('tooltip')).toBeVisible();
+  await userEvent.keyboard('{Escape}');
+  await expect.element(page.getByRole('tooltip')).not.toBeInTheDocument();
+  await expect.element(help).toHaveFocus();
+  await expect.element(dialog).toBeVisible();
+  await userEvent.keyboard('{Escape}');
+  await expect.element(dialog).not.toBeInTheDocument();
+  await expect.element(opener).toHaveFocus();
+});

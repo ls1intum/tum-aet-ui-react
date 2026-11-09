@@ -9,7 +9,7 @@ Accessible composition requires labels, keyboard behavior and focus handling as 
 ## What the components do
 
 - Keyboard operation for every interactive part: arrow keys in listboxes, menus, tabs, radio groups and calendars, `Escape` closes popups, `Enter` and `Space` activate.
-- Focus stays inside a modal dialog and returns to the trigger when it closes. Popups return focus to their trigger.
+- Modal dialogs wrap `Tab` and `Shift+Tab` within the popup and return focus to the trigger when closed. Popups return focus to their trigger.
 - Visible focus rings (`:focus-visible`) with a colour that has enough contrast in both themes.
 - Messages use `role="alert"` for errors and `role="status"` otherwise. Table result counts and paginator summaries are announced.
 - Animations respect `prefers-reduced-motion`.
@@ -21,6 +21,7 @@ Accessible composition requires labels, keyboard behavior and focus handling as 
 - Put one meaningful heading structure and landmarks on your pages; the components do not add them.
 - Keep contrast when you override tokens (4.5:1 for text, 3:1 for interface parts).
 - Do not rely on colour alone to show state. Components add icons or text for severities; keep that when you wrap them.
+- Coordinate application-driven focus with open popups using their `initialFocus` and `finalFocus` props. Keyboard containment does not prevent explicit `.focus()` calls on background elements.
 - Test with a keyboard and a screen reader. Automated checks find only part of the problems.
 
 ## Known limits

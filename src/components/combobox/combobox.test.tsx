@@ -159,7 +159,7 @@ describe('Combobox', () => {
     expect(screen.queryByRole('button', { name: 'Remove Alpha' })).not.toBeInTheDocument();
   });
 
-  it('preserves item identity and rendered local state through collection reorder and filtering', async () => {
+  it('preserves item identity and rendered local state through collection reorder', async () => {
     function Label({ label }: { label: string }) {
       // eslint-disable-next-line react/hook-use-state -- Immutable initial state detects cross-item state reuse after reorder.
       const [original] = useState(label);
