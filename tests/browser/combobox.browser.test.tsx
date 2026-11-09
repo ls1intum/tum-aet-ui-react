@@ -86,6 +86,30 @@ function reset(form: HTMLFormElement) {
   return data;
 }
 
+test('shows one focus outline for the text input and identifies the trigger separately', async () => {
+  render(
+    <>
+      <button type="button">Before</button>
+      <Single />
+    </>,
+  );
+  const input = page.getByRole('combobox', { name: 'Course' });
+  const trigger = page.getByRole('button', { name: 'Filter options' });
+  const group = input.element().closest('.tumaet-ui-autocomplete-container');
+  if (!group) throw new Error('Missing input group');
+  page.getByRole('button', { name: 'Before' }).element().focus();
+  await userEvent.keyboard('{Tab}');
+  await expect.element(input).toHaveFocus();
+  expect(getComputedStyle(group).outlineStyle).toBe('solid');
+  expect(getComputedStyle(group).outlineWidth).toBe('2px');
+  expect(getComputedStyle(input.element()).outlineStyle).toBe('none');
+  act(() => trigger.element().focus());
+  await expect.element(trigger).toHaveFocus();
+  expect(getComputedStyle(trigger.element()).outlineStyle).toBe('solid');
+  expect(getComputedStyle(trigger.element()).outlineWidth).toBe('2px');
+  expect(getComputedStyle(group).outlineStyle).toBe('none');
+});
+
 test('uses native typing and keyboard selection, skips disabled results, dismisses with Escape and returns focus', async () => {
   const { rerender } = render(<Single />);
   const input = page.getByRole('combobox', { name: 'Course' });
