@@ -10,6 +10,10 @@
   "packageRules": [
     {
       "matchManagers": ["npm"],
+      "minimumReleaseAge": "1 day"
+    },
+    {
+      "matchManagers": ["npm"],
       "matchDepTypes": ["devDependencies", "packageManager"],
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "groupName": "development tooling",
