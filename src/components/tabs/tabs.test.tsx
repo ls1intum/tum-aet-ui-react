@@ -41,7 +41,7 @@ describe('Tabs', () => {
     expect(change).toHaveBeenLastCalledWith('b', expect.objectContaining({ reason: 'none' }));
     expect(screen.getByRole('tabpanel')).toHaveTextContent('Panel B');
   });
-  it('honors value cancellation and native handler composition', async () => {
+  it('honors value cancellation', async () => {
     const change = vi.fn<NonNullable<TabsProps['onValueChange']>>((_, details) => details.cancel());
     render(<Example onValueChange={change} />);
     await userEvent.click(screen.getByRole('tab', { name: 'Beta' }));

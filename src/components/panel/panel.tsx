@@ -26,7 +26,7 @@ export function PanelTitle({ className, ...props }: PanelTitleProps) {
   return <span {...props} className={cx('tumaet-ui-panel-title', className)} />;
 }
 export type PanelTriggerProps = ComponentPropsWithRef<typeof Collapsible.Trigger>;
-/** Defaults to translated Expand/Collapse; children can supply a custom control. */
+/** Defaults to translated Expand/Collapse. Children supply button content; render replaces the control. */
 export function PanelTrigger({ className, children, render, ...props }: PanelTriggerProps) {
   const t = useTranslate();
   const defaultRender: Collapsible.Trigger.Props['render'] = (buttonProps, state) => (
