@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, screen } from 'storybook/test';
-import { useArgs } from 'storybook/preview-api';
-import { Combobox, type ComboboxProps } from './combobox';
+import { expect, screen, waitFor } from 'storybook/test';
+import { Combobox } from './combobox';
 import { ComboboxDemoParts, AsyncComboboxExample, languages } from './combobox.demo';
 
 const meta = {
@@ -10,14 +9,14 @@ const meta = {
   component: Combobox<string>,
   args: { items: languages, value: null },
   render: function Render(args) {
-    const [{ value }, updateArgs] = useArgs<ComboboxProps<string>>();
+    const [value, setValue] = useState(args.value);
     return (
       <Combobox
         {...args}
         value={value}
         onValueChange={(next, details) => {
           args.onValueChange?.(next, details);
-          if (!details.isCanceled) updateArgs({ value: next });
+          if (!details.isCanceled) setValue(next);
         }}
       >
         <ComboboxDemoParts />
@@ -30,6 +29,7 @@ const meta = {
         'Root-owned descriptors: unique stable key, typed value, string label, optional disabled. Retain selected descriptors during async searches.',
     },
     value: {
+      control: false,
       description:
         'Required caller-owned selection: null for an empty single control, [] for multiple. Query text uses inputValue independently.',
     },
@@ -50,12 +50,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
+export const Opened: Story = { args: { defaultOpen: true } };
 export const Selected: Story = {
   play: async ({ canvas, userEvent }) => {
     const input = canvas.getByRole('combobox', { name: 'Course language' });
     await userEvent.type(input, 'ger');
     await userEvent.click(await screen.findByRole('option', { name: 'German' }));
-    await expect(input).toHaveValue('German');
+    await waitFor(async () => expect(input).toHaveValue('German'));
   },
 };
 export const Disabled: Story = { args: { disabled: true, value: 'German' } };

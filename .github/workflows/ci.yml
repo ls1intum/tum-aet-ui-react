@@ -22,11 +22,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:browser:install
       - run: pnpm test:browser
+      - run: pnpm test:storybook
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() }}
         with:
           name: browser-results
-          path: build/browser-results/
+          path: |
+            build/browser-results/
+            build/storybook-results/
           if-no-files-found: warn
           retention-days: 7
   build:
@@ -49,3 +52,4 @@ jobs:
       - run: pnpm test
       - run: pnpm pack:check
       - run: pnpm test:consumer latest
+      - run: pnpm build-storybook

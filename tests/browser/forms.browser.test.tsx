@@ -12,7 +12,7 @@ import {
   Textarea,
   InputNumber,
   SearchField,
-} from '../../src';
+} from '@tumaet/ui-react';
 
 function NativeForm({ cancelReset = false, revision = 0 }: { cancelReset?: boolean; revision?: number }) {
   const [controlled, setControlled] = useState('Caller');

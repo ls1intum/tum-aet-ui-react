@@ -23,7 +23,7 @@ export default defineConfig({
         preserveModules: true,
         preserveModulesRoot: resolve(import.meta.dirname, 'src'),
         entryFileNames: '[name].js',
-        // Existing TSX modules use hooks/context even before the behaviour migration.
+        // TSX parts define the React client boundaries.
         // Keep barrels and pure TS utilities free of a blanket client boundary.
         banner: (chunk) => (chunk.facadeModuleId?.endsWith('.tsx') === true ? "'use client';" : ''),
       },

@@ -51,7 +51,7 @@ export function TypedComboboxes() {
       <ComboboxPortal container={document.body}>
         <ComboboxPositioner>
           <ComboboxPopup ref={popup}>
-            <ComboboxList />
+            <ComboboxList aria-label="Languages" />
           </ComboboxPopup>
         </ComboboxPositioner>
       </ComboboxPortal>

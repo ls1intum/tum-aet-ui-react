@@ -25,7 +25,7 @@ function Parts(props: SelectTriggerProps = {}) {
       <SelectPortal>
         <SelectPositioner>
           <SelectPopup>
-            <SelectList />
+            <SelectList aria-label={props['aria-label'] ?? 'Choices'} aria-labelledby={props['aria-labelledby']} />
           </SelectPopup>
         </SelectPositioner>
       </SelectPortal>
@@ -147,7 +147,7 @@ describe('Select', () => {
         <SelectPortal>
           <SelectPositioner>
             <SelectPopup>
-              <SelectList />
+              <SelectList aria-label="Object choices" />
             </SelectPopup>
           </SelectPositioner>
         </SelectPortal>

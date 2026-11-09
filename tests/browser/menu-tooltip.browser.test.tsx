@@ -2,16 +2,14 @@ import { useId, useRef, useState } from 'react';
 import { render } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { Button } from '../../src/components/button';
 import {
+  Button,
   Dialog,
   DialogTrigger,
   DialogPortal,
   DialogBackdrop,
   DialogPopup,
   DialogTitle,
-} from '../../src/components/dialog';
-import {
   Menu,
   MenuTrigger,
   MenuPortal,
@@ -19,8 +17,6 @@ import {
   MenuPopup,
   MenuItem,
   MenuLinkItem,
-} from '../../src/components/menu';
-import {
   Tooltip,
   TooltipProvider,
   TooltipTrigger,
@@ -28,7 +24,7 @@ import {
   TooltipPositioner,
   TooltipPopup,
   TooltipArrow,
-} from '../../src/components/tooltip';
+} from '@tumaet/ui-react';
 
 function MenuFixture() {
   const [chosen, setChosen] = useState('None');

@@ -65,6 +65,15 @@ jobs:
       - run: pnpm lint:css
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:storybook
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: release-storybook-results
+          path: build/storybook-results/
+          if-no-files-found: warn
+          retention-days: 14
       - run: pnpm pack:check
       - name: Record immutable artifact
         id: artifact
@@ -106,8 +115,54 @@ jobs:
           path: build/package
       - run: node scripts/consumer/run.mjs ${{ matrix.peers }}
 
+  browser:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: package
+          path: build/package
+      - name: Extract the verified package for browser tests
+        env:
+          PACKAGE_FILE: ${{ needs.build.outputs.filename }}
+          PACKAGE_INTEGRITY: ${{ needs.build.outputs.integrity }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { execFileSync } from 'node:child_process';
+          import { createHash } from 'node:crypto';
+          import { readFileSync, rmSync } from 'node:fs';
+          const tarball = `build/package/${process.env.PACKAGE_FILE}`;
+          assert.equal(`sha512-${createHash('sha512').update(readFileSync(tarball)).digest('base64')}`, process.env.PACKAGE_INTEGRITY);
+          rmSync('dist', { recursive: true, force: true });
+          execFileSync('tar', ['-xzf', tarball, '--strip-components=1', '-C', '.', 'package/dist']);
+          NODE
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:browser:install
+      # Rebuilding here would replace the package bytes under test.
+      - run: pnpm exec vitest run --config vitest.browser.config.ts
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: release-browser-results
+          path: build/browser-results/
+          if-no-files-found: warn
+          retention-days: 14
+
   stage:
-    needs: [build, consumer]
+    needs: [build, consumer, browser]
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     timeout-minutes: 5

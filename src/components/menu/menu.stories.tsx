@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, screen, userEvent } from 'storybook/test';
+import { expect, screen, waitFor } from 'storybook/test';
 import { Button } from '../button';
 import { Menu, MenuTrigger, MenuPortal, MenuPositioner, MenuPopup, MenuItem, MenuLinkItem } from './menu';
 
@@ -38,26 +38,33 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 export const Opened: Story = {
-  play: async ({ canvas }) => {
+  play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Course actions' }));
-    await expect(screen.getByRole('menu')).toBeVisible();
+    const menu = await screen.findByRole('menu');
+    await waitFor(async () => expect(menu).toBeVisible());
   },
 };
 export const KeyboardNavigation: Story = {
-  play: async ({ canvas }) => {
+  play: async ({ canvas, userEvent }) => {
     const trigger = canvas.getByRole('button', { name: 'Course actions' });
     trigger.focus();
-    await userEvent.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}');
-    await expect(screen.getByRole('menuitem', { name: 'Add tutors' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
+    await waitFor(async () => expect(screen.getByRole('menuitem', { name: 'Add students' })).toHaveFocus());
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}');
+    await waitFor(async () => expect(screen.getByRole('menuitem', { name: 'Add tutors' })).toHaveFocus());
     await userEvent.keyboard('{Escape}');
-    await expect(trigger).toHaveFocus();
+    await waitFor(async () => expect(trigger).toHaveFocus());
   },
 };
 
 function ScopedMenu() {
   const portalHost = useRef<HTMLDivElement>(null);
   return (
-    <div data-theme="dark" className="tumaet-ui-root" style={{ padding: 24 }}>
+    <div
+      data-theme="dark"
+      className="tumaet-ui-root"
+      style={{ padding: 24, background: 'var(--tumaet-ui-content-background)', color: 'var(--tumaet-ui-text-color)' }}
+    >
       <Menu>
         <MenuTrigger render={<Button variant="outlined" />}>Scoped dark menu</MenuTrigger>
         <MenuPortal container={portalHost}>

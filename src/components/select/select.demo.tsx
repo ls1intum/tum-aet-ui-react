@@ -25,7 +25,7 @@ export default function SelectDemo() {
         <SelectPortal>
           <SelectPositioner>
             <SelectPopup>
-              <SelectList />
+              <SelectList aria-labelledby={`${id}-label`} />
             </SelectPopup>
           </SelectPositioner>
         </SelectPortal>

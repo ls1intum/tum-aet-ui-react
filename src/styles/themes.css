@@ -21,6 +21,7 @@
   --tumaet-ui-radius-md: 0.375rem;
   --tumaet-ui-radius-xl: 0.75rem;
   --tumaet-ui-radius-2xl: 1rem;
+  --tumaet-ui-backdrop-background: rgb(0 0 0 / 32%);
   --tumaet-ui-shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 5%);
   --tumaet-ui-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 10%), 0 1px 2px -1px rgb(0 0 0 / 10%);
   --tumaet-ui-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 10%), 0 2px 4px -2px rgb(0 0 0 / 10%);

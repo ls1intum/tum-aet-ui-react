@@ -6,7 +6,7 @@
 .tumaet-ui-dialog-backdrop {
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0 / 32%);
+  background: var(--tumaet-ui-backdrop-background);
 }
 
 .tumaet-ui-dialog {

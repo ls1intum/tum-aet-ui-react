@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { page } from 'vitest/browser';
-import { Button } from '../../src/components/button/button';
+import { Button } from '@tumaet/ui-react';
 
 const palettes = {
   light: { backgroundColor: 'rgb(55, 121, 180)', color: 'rgb(255, 255, 255)' },

@@ -220,16 +220,17 @@ describe('Splitter', () => {
       pointer(document, 'pointerup', 645);
     });
 
-    it('continues a drag when the parent echoes the emitted sizes', () => {
+    it('continues a persisted drag when the parent echoes the emitted sizes', () => {
       function Controlled() {
         const [sizes, setSizes] = useState<[number, number]>([60, 40]);
         return (
-          <Splitter panelSizes={sizes} minSizes={[20, 30]} gutterSize={8} onSizesChange={setSizes}>
+          <Splitter panelSizes={sizes} minSizes={[20, 30]} gutterSize={8} stateKey="echo" onSizesChange={setSizes}>
             <i />
             <i />
           </Splitter>
         );
       }
+      window.localStorage.setItem('echo-horizontal', '60');
       const { container } = render(<Controlled />);
       mockWidth(container, 966);
       const separator = screen.getByRole('separator');
@@ -347,5 +348,19 @@ describe('Splitter', () => {
     );
     expect(screen.getByLabelText('Draft')).toBe(input);
     expect(input.value).toBe('Edited');
+  });
+
+  it('keeps a stable caller ref attached across resizing and releases it on unmount', async () => {
+    const cleanup = vi.fn();
+    const ref = vi.fn((node: HTMLDivElement | null) => (node ? cleanup : undefined));
+    const { separator, unmount } = setup({ ref });
+    const root = ref.mock.calls[0]?.[0];
+    expect(root).toHaveClass('tumaet-ui-splitter');
+    separator.focus();
+    await userEvent.keyboard('{ArrowRight}{ArrowLeft}');
+    expect(ref).toHaveBeenCalledOnce();
+    expect(cleanup).not.toHaveBeenCalled();
+    unmount();
+    expect(cleanup).toHaveBeenCalledOnce();
   });
 });

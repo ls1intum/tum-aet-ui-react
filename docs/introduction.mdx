@@ -4,25 +4,29 @@ import { Meta } from '@storybook/addon-docs/blocks';
 
 # TUM AET UI for React
 
-React components and styles of the design system of the Applied Education Technologies (AET) research group at TUM. It is a port of `@tumaet/ui-angular` and shares its design tokens (`--tumaet-ui-*`), class names, light and dark theme.
+The React design system for applications from Applied Education Technologies (AET) at TUM. It shares design tokens (`--tumaet-ui-*`), class names and light/dark themes with `@tumaet/ui-angular`.
 
 ## Install and use
 
-Install the package with `npm install @tumaet/ui-react`. React 19 and React DOM 19 are peer dependencies. The API may change during 0.x releases; see the migration policy before adopting APIs from an unreleased branch.
+Install the package with `npm install @tumaet/ui-react`. React 19 and React DOM 19 are peer dependencies. Check the changelog before upgrading between 0.x minor releases.
 
 ```tsx
 import '@tumaet/ui-react/styles.css';
-import { Button, Dialog } from '@tumaet/ui-react';
+import { Button } from '@tumaet/ui-react';
+
+export function App() {
+  return <Button severity="primary">Save changes</Button>;
+}
 ```
 
-Import the stylesheet once. Tokens, base rules and all component styles live in the `tumaet-ui` cascade layer. Declare application layer order before imports so resets stay below the library and overrides stay above it; see the Theming guide for plain CSS and Tailwind examples. React and React DOM 19 are peers; `@base-ui/react` is the approved runtime dependency for the phased behaviour migration. Existing components keep their current implementations and props until individually migrated.
+Import the stylesheet once. Tokens, base rules and all component styles live in the `tumaet-ui` cascade layer. Declare application layer order before imports so resets stay below the library and overrides stay above it; see the Theming guide for plain CSS and Tailwind examples.
 
 ## Principles
 
-- **Plain CSS and tokens.** Colours, spacing, radii, shadows and type sizes come from CSS custom properties. There is no CSS-in-JS and no Tailwind.
-- **Behaviour foundation.** Native form controls use HTML/React behaviour. Migrated complex widgets delegate generic interaction to public Base UI primitives; owned date and number formatting keeps using `Intl`.
-- **Accessibility is part of the component.** See the Accessibility page.
-- **Same look as the Angular library.** If a component differs from its Angular counterpart, it is documented on its page.
+- **AET appearance.** Shared tokens and `severity`, `size` and `variant` props define the look. No styling framework is required.
+- **React composition.** Native controls supply simple form behavior. Public Base UI primitives supply popup and compound-widget interaction; Base UI is the package's only direct runtime dependency.
+- **Application ownership.** Callers own controlled values, application data and validation policy. Component pages document state and empty-value conventions.
+- **Accessible composition.** Components provide semantics and keyboard behavior; callers supply names and meaningful content. See the Accessibility page.
 
 ## Where to go next
 

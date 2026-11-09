@@ -31,12 +31,14 @@ export function ComboboxDemoParts({
   );
   return (
     <>
-      <label htmlFor={id}>{label}</label>
+      <label id={`${id}-label`} htmlFor={id}>
+        {label}
+      </label>
       <ComboboxInputGroup>{multiple ? <ComboboxChips>{controls}</ComboboxChips> : controls}</ComboboxInputGroup>
       <ComboboxPortal>
         <ComboboxPositioner>
           <ComboboxPopup>
-            <ComboboxList />
+            <ComboboxList aria-labelledby={`${id}-label`} />
           </ComboboxPopup>
         </ComboboxPositioner>
       </ComboboxPortal>

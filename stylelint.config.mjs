@@ -1,38 +1,26 @@
 /** @type {import('stylelint').Config} */
 export default {
-  extends: ['stylelint-config-standard', 'stylelint-config-clean-order'],
-  plugins: ['stylelint-declaration-strict-value'],
+  extends: ['stylelint-config-standard'],
   reportNeedlessDisables: true,
   reportInvalidScopeDisables: true,
   reportDescriptionlessDisables: true,
   rules: {
-    // Component styles only use the design tokens, never literal colours.
-    'scale-unlimited/declaration-strict-value': [
-      ['/color$/', 'fill', 'stroke'],
-      {
-        ignoreValues: [
-          'Highlight',
-          'HighlightText',
-          'Canvas',
-          'CanvasText',
-          'ButtonText',
-          'GrayText',
-          'LinkText',
-          'transparent',
-          'currentColor',
-          'inherit',
-          'none',
-          'initial',
-          'unset',
-          '0',
-          'auto',
-        ],
-        ignoreFunctions: true,
-        disableFix: true,
-      },
+    'function-disallowed-list': [
+      'rgb',
+      'rgba',
+      'hsl',
+      'hsla',
+      'hwb',
+      'lab',
+      'lch',
+      'oklab',
+      'oklch',
+      'color',
+      'device-cmyk',
     ],
     'color-no-hex': true,
     'color-named': 'never',
+    'declaration-empty-line-before': null,
     // Hover, focus and disabled states are ordered by meaning, not by specificity.
     'no-descending-specificity': null,
     'declaration-no-important': true,
@@ -54,7 +42,7 @@ export default {
       files: ['src/styles/themes.css'],
       rules: {
         'color-no-hex': null,
-        'scale-unlimited/declaration-strict-value': null,
+        'function-disallowed-list': null,
       },
     },
   ],

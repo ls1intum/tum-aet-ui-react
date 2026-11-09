@@ -4,6 +4,9 @@ All notable changes to `@tumaet/ui-react`. The version numbers are independent o
 
 ## 0.2.0 (unreleased)
 
+- Splitter follows physical pointer/arrow movement in both text directions, restores persisted sizes without hydration mismatches, and keeps caller refs stable during resizing.
+- Theme Dialog and Popover backdrops with `--tumaet-ui-backdrop-background`.
+
 - Layer tokens, base rules and components under `tumaet-ui`. Declare application layer order before stylesheet imports; replace references to `tumaet-ui-theme`. Theme aliases and nested scopes follow the [theming contract](docs/theming.mdx).
 - Ship modular ESM and validate the packed artifact with fresh consumers. React and React DOM remain peers; Base UI is a runtime dependency.
 - Compose Dialog and Popover from flat component parts, including Trigger, Portal and Popup, with Backdrop or Positioner as appropriate. Base UI owns their interaction; trigger handles preserve typed payloads. Dialog refs now target the rendered Base UI part rather than an `HTMLDialogElement`.
@@ -20,14 +23,15 @@ All notable changes to `@tumaet/ui-react`. The version numbers are independent o
 - Add `tumAetUi.inputNumber.increment`, `.decrement` and `.roleDescription` translations. Remove unused MultiSelect selection-count and Select filtering-result messages with their obsolete components.
 
 ```tsx
+<label id="course-label" htmlFor="course">Course</label>
 <Select items={courses} value={course} onValueChange={setCourse}>
-  <SelectTrigger>
+  <SelectTrigger id="course" aria-labelledby="course-label">
     <SelectValue placeholder="Choose a course" />
   </SelectTrigger>
   <SelectPortal>
     <SelectPositioner>
       <SelectPopup>
-        <SelectList />
+        <SelectList aria-labelledby="course-label" />
       </SelectPopup>
     </SelectPositioner>
   </SelectPortal>

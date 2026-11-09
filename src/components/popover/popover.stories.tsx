@@ -68,7 +68,8 @@ export const ClosesOnEscape: Story = {
   play: async ({ canvas, userEvent }) => {
     const trigger = canvas.getByRole('button', { name: 'More actions' });
     await userEvent.click(trigger);
-    await expect(await screen.findByRole('dialog', { name: 'Exercise actions' })).toBeVisible();
+    const popup = await screen.findByRole('dialog', { name: 'Exercise actions' });
+    await waitFor(async () => expect(popup).toBeVisible());
     await userEvent.keyboard('{Escape}');
     await waitFor(async () => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     await expect(trigger).toHaveFocus();

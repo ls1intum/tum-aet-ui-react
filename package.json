@@ -61,13 +61,15 @@
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "lint:css": "stylelint \"src/**/*.css\" --max-warnings 0",
-    "format:check": "prettier --check . --ignore-path .prettierignore"
+    "format:check": "prettier --check . --ignore-path .prettierignore",
+    "test:storybook": "vitest run --config vitest.storybook.config.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
     "@eslint/js": "9.39.5",
     "@storybook/addon-a11y": "^10.6.6",
     "@storybook/addon-docs": "^10.6.6",
+    "@storybook/addon-vitest": "^10.6.6",
     "@storybook/react-vite": "^10.6.6",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
@@ -99,9 +101,7 @@
     "semver": "7.8.6",
     "storybook": "^10.6.6",
     "stylelint": "18.0.0",
-    "stylelint-config-clean-order": "^10.0.0",
     "stylelint-config-standard": "41.0.0",
-    "stylelint-declaration-strict-value": "^1.12.1",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "^8.72.1",
     "vite": "^8.3.6",
