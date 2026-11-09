@@ -2,7 +2,7 @@
 
 All notable changes to `@tumaet/ui-react`. The version numbers are independent of `@tumaet/ui-angular`.
 
-## 0.2.0 (unreleased)
+## 0.2.0 (2026-11-09)
 
 - Splitter follows physical pointer/arrow movement in both text directions, restores persisted sizes without hydration mismatches, and keeps caller refs stable during resizing.
 - Theme Dialog and Popover backdrops with `--tumaet-ui-backdrop-background`.
