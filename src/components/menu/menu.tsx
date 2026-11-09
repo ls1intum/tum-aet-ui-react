@@ -45,7 +45,7 @@ export function MenuItem({ className, ...props }: MenuItemProps) {
   );
 }
 
-/** Navigation entries use Base UI's anchor primitive; closeOnClick defaults to false upstream. */
+/** Navigation entries render anchors. Set closeOnClick when selection should dismiss the menu. */
 export function MenuLinkItem({ className, ...props }: MenuLinkItemProps) {
   return (
     <BaseMenu.LinkItem
