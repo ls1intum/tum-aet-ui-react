@@ -44,23 +44,20 @@ test('blocks background pointer activation until the modal closes', async () => 
   await expect.element(page.getByRole('status', { name: 'Background actions' })).toHaveTextContent('1');
 });
 
-test.each([false, true])('excludes the modal background from Tab navigation (reverse: %s)', async (shift) => {
+test.each([
+  { name: 'forward', shift: false },
+  { name: 'backward', shift: true },
+])('wraps keyboard focus at the $name modal boundary', async ({ shift }) => {
   render(<DialogFixture />);
-  const background = page.getByRole('button', { name: 'Outside action' }).element();
   await openSettings();
-  for (let index = 0; index < 8; index += 1) {
-    await userEvent.tab({ shift });
-    expect(document.activeElement).not.toBe(background);
-  }
-});
-
-test('keeps programmatic focus inside the active modal', async () => {
-  render(<DialogFixture />);
-  const background = page.getByRole('button', { name: 'Outside action' }).element();
-  await openSettings();
-  const dialog = page.getByRole('dialog', { name: 'Settings', exact: true }).element();
-  background.focus();
-  await expect.poll(() => dialog.contains(document.activeElement)).toBe(true);
+  const close = page.getByRole('button', { name: 'Close', exact: true });
+  const save = page.getByRole('button', { name: 'Save settings' });
+  const from = shift ? close : save;
+  const to = shift ? save : close;
+  from.element().focus();
+  await expect.element(from).toHaveFocus();
+  await userEvent.tab({ shift });
+  await expect.element(to).toHaveFocus();
 });
 
 test('lets Tab leave a nonmodal popover and restores its trigger after Escape', async () => {

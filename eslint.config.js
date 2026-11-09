@@ -15,7 +15,7 @@ const sourceFiles = ['**/*.{ts,tsx}'];
 const testFiles = ['src/**/*.test.{ts,tsx}', 'src/test-setup.ts', 'src/test-utils.ts'];
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'build/**', 'storybook-static/**', 'node_modules/**', 'scripts/consumer/app/**'] },
+  { ignores: ['dist/**', 'build/**', 'storybook-static*/**', 'node_modules/**', 'scripts/consumer/app/**'] },
   { linterOptions: { reportUnusedDisableDirectives: 'error', reportUnusedInlineConfigs: 'error' } },
 
   js.configs.recommended,

@@ -30,7 +30,7 @@ Fixtures stay outside `src` and published output. Setup preserves native dialog,
 
 Use unit tests for AET composition, labels, translations, callback/ref forwarding and owned state or promise lifetimes. Use real browsers for native focus, keyboard/pointer interaction, forms, positioning and emitted CSS; avoid repeating the same workflow in jsdom. Await the relevant state or promise instead of flushing an arbitrary timer.
 
-Vitest runs tests in an iframe. Establish initial keyboard focus inside it. Exercise keyboard containment separately from Escape dismissal and focus return: Tab can reach browser chrome. Assert focus inside the active modal; require a particular descendant only when the caller requested that target.
+Vitest runs tests in an iframe. Establish initial keyboard focus inside it. Exercise keyboard containment separately from Escape dismissal and focus return. Test Tab and Shift+Tab at the dialog’s last and first controls, respectively, and assert the opposite boundary receives focus. Require a particular initial target only when the caller requested it.
 
 ## Failure artifacts
 
