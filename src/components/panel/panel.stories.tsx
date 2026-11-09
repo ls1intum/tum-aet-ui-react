@@ -1,68 +1,65 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, within } from 'storybook/test';
-import { Panel } from './panel';
-
+import { expect } from 'storybook/test';
+import { Panel, PanelHeader, PanelTitle, PanelTrigger, PanelContent } from './panel';
 const meta = {
   title: 'Data Display/Panel',
   component: Panel,
-  args: {
-    header: 'Exercise details',
-    children: <p style={{ margin: 0 }}>Review the problem statement, due date, and grading criteria.</p>,
-    toggleable: false,
-  },
-  argTypes: { children: { control: false }, footer: { control: false } },
-  decorators: [
-    (Story) => (
-      <div style={{ width: 'min(28rem, 100%)' }}>
-        <Story />
-      </div>
-    ),
-  ],
+  subcomponents: { PanelHeader, PanelTitle, PanelTrigger, PanelContent },
+  args: { defaultOpen: true },
   parameters: {
     docs: {
       description: {
         component:
-          'A bordered container with a header. When `toggleable`, the header gets a toggle button that follows the disclosure pattern (`aria-expanded`, `aria-controls`); collapsed content is inert and hidden from assistive technology. The collapsed state can be controlled (`collapsed` and `onCollapsedChange`) or uncontrolled (`defaultCollapsed`).',
+          'Flat Collapsible parts with AET appearance. Base UI owns disclosure state, IDs, focusability and transitions. Compose additional header controls beside PanelTrigger. open/onOpenChange supports cancellation; defaultOpen is uncontrolled.',
       },
     },
   },
+  render: (args) => (
+    <Panel {...args}>
+      <PanelHeader>
+        <PanelTitle>Exercise details</PanelTitle>
+        <PanelTrigger />
+      </PanelHeader>
+      <PanelContent>
+        <p>Review the problem statement, due date and grading criteria.</p>
+        <footer>Exercise footer</footer>
+      </PanelContent>
+    </Panel>
+  ),
 } satisfies Meta<typeof Panel>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
-
 export const Default: Story = {};
-
-export const Toggleable: Story = {
-  args: { toggleable: true },
-  play: async ({ canvasElement }) => {
-    const toggle = within(canvasElement).getByRole('button', { name: 'Exercise details' });
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    await userEvent.click(toggle);
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+export const Collapsed: Story = {
+  args: { defaultOpen: false },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Expand' }));
+    await expect(canvas.getByRole('button', { name: 'Collapse' })).toHaveAttribute('aria-expanded', 'true');
   },
 };
-
-export const Collapsed: Story = { args: { toggleable: true, defaultCollapsed: true } };
-
-export const WithFooter: Story = {
-  args: { toggleable: true, footer: <p style={{ margin: 0, padding: '0 1.125rem 1.125rem' }}>Footer</p> },
-};
-
-export const WithoutHeader: Story = { args: { header: undefined, toggleable: true } };
-
-export const CustomToggleLabel: Story = {
-  args: {
-    header: <span>Quiz exercises (2)</span>,
-    toggleable: true,
-    toggleLabel: 'Quiz exercises',
-  },
-};
-
 export const Controlled: Story = {
   render: (args) => {
-    const [collapsed, setCollapsed] = useState(true);
-    return <Panel {...args} toggleable collapsed={collapsed} onCollapsedChange={setCollapsed} />;
+    const [open, setOpen] = useState(false);
+    return (
+      <Panel {...args} open={open} onOpenChange={setOpen}>
+        <PanelHeader>
+          <PanelTitle>Quiz exercises (2)</PanelTitle>
+          <button type="button">Edit quiz</button>
+          <PanelTrigger aria-label="Toggle quiz exercises" />
+        </PanelHeader>
+        <PanelContent>Quiz details</PanelContent>
+      </Panel>
+    );
   },
+};
+export const Static: Story = {
+  render: () => (
+    <Panel open>
+      <PanelHeader>
+        <PanelTitle>Static panel</PanelTitle>
+      </PanelHeader>
+      <PanelContent>Always visible.</PanelContent>
+    </Panel>
+  ),
 };

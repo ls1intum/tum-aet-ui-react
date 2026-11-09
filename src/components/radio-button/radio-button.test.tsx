@@ -1,140 +1,100 @@
-import { FormField } from '../form-field/form-field';
+import { createRef } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../test-utils';
-import { RadioButton, RadioGroup } from './radio-button';
+import { Field, FieldError } from '../form-field/form-field';
+import { RadioButton, RadioGroup, type RadioGroupProps } from './radio-button';
 
-const group = (props = {}) => (
-  <RadioGroup aria-label="Size" {...props}>
-    <RadioButton value="s" aria-label="Small" />
-    <RadioButton value="m" aria-label="Medium" />
-    <RadioButton value="l" aria-label="Large" />
-  </RadioGroup>
-);
-
-/** Stands in for a handler on a controlled radio whose state stays with the parent. */
-const noop = () => {
-  // intentionally empty
-};
+function Example(props: Omit<RadioGroupProps, 'name'>) {
+  return (
+    <RadioGroup name="size" aria-label="Size" {...props}>
+      <RadioButton value="s" aria-label="Small" />
+      <RadioButton value="m" aria-label="Medium" disabled />
+      <RadioButton value="l" aria-label="Large" />
+    </RadioGroup>
+  );
+}
 
 describe('RadioGroup', () => {
-  it('selects on click and reports the value', async () => {
-    const onChange = vi.fn();
-    render(group({ onChange }));
-    await userEvent.click(screen.getByRole('radio', { name: 'Medium' }));
-    expect(screen.getByRole('radio', { name: 'Medium' })).toBeChecked();
-    expect(onChange).toHaveBeenCalledWith('m');
-  });
-
-  it('has one tab stop and moves with the arrow keys, wrapping', async () => {
-    render(group({ defaultValue: 'm' }));
+  it('has one tab stop and navigates with native arrows, skipping disabled options', async () => {
+    render(<Example defaultValue="s" />);
     await userEvent.tab();
-    expect(screen.getByRole('radio', { name: 'Medium' })).toHaveFocus();
+    expect(screen.getByRole('radio', { name: 'Small' })).toHaveFocus();
     await userEvent.keyboard('{ArrowDown}');
     expect(screen.getByRole('radio', { name: 'Large' })).toHaveFocus();
     expect(screen.getByRole('radio', { name: 'Large' })).toBeChecked();
-    await userEvent.keyboard('{ArrowDown}');
-    expect(screen.getByRole('radio', { name: 'Small' })).toBeChecked();
     await userEvent.keyboard('{ArrowUp}');
-    expect(screen.getByRole('radio', { name: 'Large' })).toBeChecked();
-  });
-
-  it('is controlled and can be disabled', async () => {
-    const { rerender } = render(group({ value: 's' }));
-    await userEvent.click(screen.getByRole('radio', { name: 'Large' }));
     expect(screen.getByRole('radio', { name: 'Small' })).toBeChecked();
-    rerender(group({ value: 's', disabled: true }));
-    screen.getAllByRole('radio').forEach((r) => expect(r).toBeDisabled());
   });
 
-  it('works standalone', async () => {
-    render(<RadioButton aria-label="Solo" />);
-    await userEvent.click(screen.getByRole('radio'));
-    expect(screen.getByRole('radio')).toBeChecked();
-  });
-
-  it('has no axe violations', async () => {
-    const { container } = render(group({ defaultValue: 's' }));
-    await expectNoA11yViolations(container);
-  });
-
-  it('keeps uncontrolled standalone radios with a shared name mutually exclusive', async () => {
-    render(
-      <>
-        <RadioButton name="solo" aria-label="A" defaultChecked />
-        <RadioButton name="solo" aria-label="B" />
-      </>,
-    );
-    expect(screen.getByRole('radio', { name: 'A' })).toBeChecked();
-    await userEvent.click(screen.getByRole('radio', { name: 'B' }));
-    expect(screen.getByRole('radio', { name: 'B' })).toBeChecked();
-    expect(screen.getByRole('radio', { name: 'A' })).not.toBeChecked();
-  });
-
-  it('forwards id, name and aria-label and reports the value on selection', async () => {
-    const onChange = vi.fn();
-    render(<RadioButton id="opt-a" name="g" value="a" aria-label="Option A" onChange={onChange} />);
-    const radio = screen.getByRole('radio', { name: 'Option A' });
-    expect(radio).toHaveAttribute('id', 'opt-a');
-    expect(radio).toHaveAttribute('name', 'g');
-    expect(radio).toHaveAttribute('value', 'a');
-    await userEvent.click(radio);
-    expect(onChange).toHaveBeenCalledWith('a', expect.anything());
-  });
-
-  it('does not select when disabled, alone or through the group', async () => {
-    const onChange = vi.fn();
-    render(
-      <>
-        <RadioButton aria-label="Solo" disabled onChange={onChange} />
-        {group({ disabled: true, onChange })}
-      </>,
-    );
-    await userEvent.click(screen.getByRole('radio', { name: 'Solo' }));
-    await userEvent.click(screen.getByRole('radio', { name: 'Small' }));
-    expect(onChange).not.toHaveBeenCalled();
-    expect(screen.getByRole('radiogroup')).toHaveAttribute('aria-disabled', 'true');
-  });
-
-  it('shares one generated name inside a group and supports numeric values', async () => {
-    const onChange = vi.fn();
-    render(
-      <RadioGroup aria-label="Count" onChange={onChange}>
+  it('reports numeric values and native events without claiming parent/child generic safety', async () => {
+    const change = vi.fn<NonNullable<RadioGroupProps<number>['onValueChange']>>((value, event) => {
+      expect(value).toBe(2);
+      expect(event.currentTarget).toBe(screen.getByRole('radio', { name: 'Two' }));
+      expect(event.currentTarget.value).toBe('2');
+    });
+    const view = (value?: number | null) => (
+      <RadioGroup
+        name="count"
+        aria-label="Count"
+        defaultValue={value === undefined ? 1 : undefined}
+        value={value}
+        onValueChange={change}
+      >
         <RadioButton value={1} aria-label="One" />
         <RadioButton value={2} aria-label="Two" />
-      </RadioGroup>,
+      </RadioGroup>
     );
-    const [one, two] = screen.getAllByRole('radio');
-    expect(one!.getAttribute('name')).toBeTruthy();
-    expect(one!.getAttribute('name')).toBe(two!.getAttribute('name'));
-    await userEvent.click(two!);
-    expect(onChange).toHaveBeenCalledWith(2);
+    const { rerender } = render(view());
+    await userEvent.click(screen.getByRole('radio', { name: 'Two' }));
+    expect(change).toHaveBeenCalledOnce();
+    expect(screen.getByRole('radio', { name: 'Two' })).toBeChecked();
+    // Remount when switching from uncontrolled to controlled, as with a native input.
+    rerender(<div key="controlled">{view(null)}</div>);
+    expect(screen.getByRole('radio', { name: 'One' })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Two' })).not.toBeChecked();
   });
 
-  it('reflects a changed group value and takes the invalid state from a FormField', () => {
-    const { rerender } = render(group({ value: 's' }));
-    expect(screen.getByRole('radio', { name: 'Small' })).toBeChecked();
-    rerender(group({ value: 'l' }));
-    expect(screen.getByRole('radio', { name: 'Large' })).toBeChecked();
-    expect(screen.getByRole('radio', { name: 'Small' })).not.toBeChecked();
-  });
-
-  it('lets a controlled standalone radio stay as the parent says', async () => {
-    render(<RadioButton aria-label="Solo" checked={false} onChange={noop} />);
-    await userEvent.click(screen.getByRole('radio'));
-    expect(screen.getByRole('radio')).not.toBeChecked();
-  });
-
-  it('does not give every radio of a group the id of the enclosing FormField', () => {
-    render(
-      <FormField label="Plan" controlId="plan">
-        <RadioGroup defaultValue="a">
-          <RadioButton value="a" aria-label="A" />
-          <RadioButton value="b" aria-label="B" />
+  it('labels and describes the group through Field and cleans up rendered root and input refs', async () => {
+    const group = createRef<HTMLFieldSetElement>();
+    const option = createRef<HTMLInputElement>();
+    const { container, unmount } = render(
+      <Field data-invalid>
+        <span id="plan-label" className="tumaet-ui-form-field-label">
+          Plan
+        </span>
+        <RadioGroup
+          name="plan"
+          ref={group}
+          defaultValue="a"
+          aria-labelledby="plan-label"
+          aria-describedby="plan-error"
+          aria-invalid
+        >
+          <label id="plan-a-label" htmlFor="plan-a">
+            A
+          </label>
+          <RadioButton id="plan-a" aria-labelledby="plan-a-label" value="a" ref={option} />
+          <label id="plan-b-label" htmlFor="plan-b">
+            B
+          </label>
+          <RadioButton id="plan-b" aria-labelledby="plan-b-label" value="b" />
         </RadioGroup>
-      </FormField>,
+        <FieldError id="plan-error">Choose a plan</FieldError>
+      </Field>,
     );
-    const ids = screen.getAllByRole('radio').map((r) => r.id);
-    expect(new Set(ids.filter(Boolean)).size).toBe(ids.filter(Boolean).length);
+    expect(group.current).toBe(screen.getByRole('radiogroup', { name: 'Plan' }));
+    expect(group.current).toHaveAttribute('aria-invalid', 'true');
+    expect(group.current).toHaveAccessibleDescription('Choose a plan');
+    expect(option.current).toBe(screen.getByRole('radio', { name: 'A' }));
+    expect(option.current).toHaveProperty('checked', true);
+    await expectNoA11yViolations(container);
+    unmount();
+    expect(group.current).toBeNull();
+    expect(option.current).toBeNull();
+  });
+
+  it('requires a group instead of inventing an implicit native name', () => {
+    expect(() => render(<RadioButton value="a" aria-label="A" />)).toThrow('RadioButton must be inside RadioGroup');
   });
 });

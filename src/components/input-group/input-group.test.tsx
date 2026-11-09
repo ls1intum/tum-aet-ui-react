@@ -49,16 +49,14 @@ describe('InputGroup', () => {
     const { container } = render(
       <InputGroup>
         <InputGroupAddon>#</InputGroupAddon>
-        <InputNumber aria-label="Capacity" showButtons />
+        <InputNumber aria-label="Capacity" value={null} showButtons />
         <InputGroupAddon>places</InputGroupAddon>
       </InputGroup>,
     );
-    expect([...container.firstElementChild!.children].map((c) => c.className.split(' ')[0])).toEqual([
-      'tumaet-ui-input-group-addon',
-      'tumaet-ui-input-number',
-      'tumaet-ui-input-group-addon',
-    ]);
-    expect(screen.getByRole('spinbutton', { name: 'Capacity' })).toBeInTheDocument();
+    const group = container.firstElementChild;
+    expect(group).toContainElement(screen.getByRole('textbox', { name: 'Capacity' }));
+    expect(group).toContainElement(screen.getByText('#'));
+    expect(group).toContainElement(screen.getByText('places'));
   });
 
   it('passes props and a ref to group and addon', () => {

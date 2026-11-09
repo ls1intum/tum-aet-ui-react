@@ -1,3 +1,4 @@
+import { FormField } from '../form-field/form-field';
 import { Input, Textarea } from './input';
 
 export default function InputDemo() {
@@ -8,7 +9,12 @@ export default function InputDemo() {
       <Input aria-label="Large" size="large" placeholder="Large" />
       <Input aria-label="Invalid" invalid defaultValue="Invalid value" />
       <Input aria-label="Disabled" disabled defaultValue="Disabled" />
-      <Textarea aria-label="Notes" rows={3} placeholder="Textarea" />
+      <form>
+        <FormField label="Notes" hint="Reset restores the initial value.">
+          {(control) => <Textarea {...control} name="notes" rows={3} defaultValue="Initial notes" />}
+        </FormField>
+        <button type="reset">Reset notes</button>
+      </form>
     </div>
   );
 }

@@ -1,10 +1,12 @@
-.tumaet-ui-overlay.tumaet-ui-tooltip-bubble {
-  /* Hints hold no controls: clicks pass through to whatever lies beneath. */
-  pointer-events: none;
+.tumaet-ui-tooltip-positioner {
+  z-index: 1100;
+}
 
+.tumaet-ui-overlay.tumaet-ui-tooltip-bubble {
   box-sizing: border-box;
   width: max-content;
-  max-width: 12.5rem;
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI supplies the available viewport width. */
+  max-width: min(12.5rem, var(--available-width));
   padding: calc(var(--tumaet-ui-spacing) * 2) calc(var(--tumaet-ui-spacing) * 3);
   border: 0;
   border-radius: var(--tumaet-ui-radius-md);
@@ -18,7 +20,8 @@
 }
 
 .tumaet-ui-overlay.tumaet-ui-tooltip-bubble[data-variant='list'] {
-  max-width: 25rem;
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI supplies the available viewport width. */
+  max-width: min(25rem, var(--available-width));
 }
 
 .tumaet-ui-tooltip-bubble ul {
@@ -39,34 +42,24 @@
 }
 
 .tumaet-ui-tooltip-arrow {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  translate: -50% -50%;
   rotate: 45deg;
-
   width: 0.5rem;
   height: 0.5rem;
-
   background: var(--tumaet-ui-tooltip-background);
 }
 
-.tumaet-ui-tooltip-bubble[data-side='bottom'] > .tumaet-ui-tooltip-arrow {
-  top: auto;
-  bottom: 100%;
-  left: 50%;
-  translate: -50% 50%;
+.tumaet-ui-tooltip-arrow[data-side='top'] {
+  bottom: -0.25rem;
 }
 
-.tumaet-ui-tooltip-bubble[data-side='left'] > .tumaet-ui-tooltip-arrow {
-  top: 50%;
-  left: 100%;
-  translate: -50% -50%;
+.tumaet-ui-tooltip-arrow[data-side='bottom'] {
+  top: -0.25rem;
 }
 
-.tumaet-ui-tooltip-bubble[data-side='right'] > .tumaet-ui-tooltip-arrow {
-  top: 50%;
-  right: 100%;
-  left: auto;
-  translate: 50% -50%;
+.tumaet-ui-tooltip-arrow[data-side='left'] {
+  right: -0.25rem;
+}
+
+.tumaet-ui-tooltip-arrow[data-side='right'] {
+  left: -0.25rem;
 }

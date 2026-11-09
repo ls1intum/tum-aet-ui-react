@@ -11,7 +11,7 @@ function ThemeSample({ label, className, children, ...rest }: HTMLAttributes<HTM
     <section {...rest} aria-label={label} className={cx('tumaet-ui-root', 'tumaet-ui-theme-demo-surface', className)}>
       <h2>{label}</h2>
       <FormField label="Course name">
-        <Input placeholder="Introduction to programming" />
+        {(control) => <Input {...control} placeholder="Introduction to programming" />}
       </FormField>
       <div className="tumaet-ui-theme-demo-controls">
         <Button>Continue</Button>
