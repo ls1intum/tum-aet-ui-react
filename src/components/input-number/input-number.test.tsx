@@ -1,368 +1,161 @@
-import { useState } from 'react';
+import { createRef, useState } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../test-utils';
+import { TumAetUiI18nProvider } from '../../internal/i18n';
 import { FormField } from '../form-field/form-field';
-import { InputNumber } from './input-number';
+import { InputNumber, type InputNumberProps } from './input-number';
+
+function Controlled({
+  value: initial = null,
+  onValueChange,
+  ...props
+}: Omit<InputNumberProps, 'value'> & { value?: number | null }) {
+  const [value, setValue] = useState(initial);
+  return (
+    <InputNumber
+      {...props}
+      value={value}
+      onValueChange={(next, details) => {
+        onValueChange?.(next, details);
+        if (!details.isCanceled) setValue(next);
+      }}
+    />
+  );
+}
 
 describe('InputNumber', () => {
-  it('formats typed integers with grouping and reports numbers', async () => {
-    const onChange = vi.fn();
-    render(<InputNumber aria-label="Points" locale="en-US" onChange={onChange} />);
-    const input = screen.getByRole('spinbutton', { name: 'Points' });
-    await userEvent.type(input, '1234');
-    expect(input).toHaveValue('1,234');
-    expect(onChange).toHaveBeenLastCalledWith(1234);
-    expect(input).toHaveAttribute('aria-valuenow', '1234');
-  });
-
-  it('steps with the arrow keys and clamps to min and max', async () => {
-    render(<InputNumber aria-label="Points" defaultValue={9} min={0} max={10} step={2} />);
-    const input = screen.getByRole('spinbutton');
-    input.focus();
-    await userEvent.keyboard('{ArrowUp}');
-    expect(input).toHaveValue('10');
-    await userEvent.keyboard('{ArrowDown}{ArrowDown}');
-    expect(input).toHaveValue('6');
-  });
-
-  it('keeps a fraction while typing and truncates extra digits', async () => {
-    const onChange = vi.fn();
-    render(<InputNumber aria-label="Price" locale="en-US" maxFractionDigits={2} onChange={onChange} />);
-    const input = screen.getByRole('spinbutton');
-    await userEvent.type(input, '12.50');
-    expect(input).toHaveValue('12.50');
-    await userEvent.type(input, '9');
+  it('delegates locale parsing, formatting and empty semantics to Base UI', async () => {
+    const change = vi.fn();
+    render(
+      <Controlled aria-label="Weight" locale="de-DE" format={{ maximumFractionDigits: 2 }} onValueChange={change} />,
+    );
+    const input = screen.getByRole('textbox', { name: 'Weight' });
+    await userEvent.type(input, '1234,5');
     await userEvent.tab();
-    expect(input).toHaveValue('12.5');
-    expect(onChange).toHaveBeenLastCalledWith(12.5);
+    expect(input).toHaveValue('1.234,5');
+    expect(change).toHaveBeenLastCalledWith(1234.5, expect.objectContaining({ reason: 'input-change' }));
+    await userEvent.clear(input);
+    expect(change).toHaveBeenLastCalledWith(null, expect.objectContaining({ reason: 'input-clear' }));
   });
-
-  it('supports prefix, suffix and controlled values', async () => {
-    function Host() {
-      const [v, setV] = useState<number | null>(5);
-      return <InputNumber aria-label="Cost" locale="en-US" prefix="$" suffix=" EUR" value={v} onChange={setV} />;
-    }
-    render(<Host />);
-    const input = screen.getByRole('spinbutton');
-    expect(input).toHaveValue('$5 EUR');
-    input.focus();
+  it('steps within bounds using keyboard and pointer buttons', async () => {
+    render(<Controlled aria-label="Capacity" value={9} min={0} max={10} showButtons />);
+    const input = screen.getByRole('textbox');
+    await userEvent.click(input);
+    await userEvent.keyboard('{ArrowUp}{ArrowUp}');
+    expect(input).toHaveValue('10');
+    expect(screen.getByRole('button', { name: 'Increase value' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Decrease value' }));
+    expect(input).toHaveValue('9');
+  });
+  it('preserves cancellation and native key handlers', async () => {
+    const change = vi.fn<NonNullable<InputNumberProps['onValueChange']>>((_, details) => details.cancel());
+    const { rerender } = render(<Controlled aria-label="Points" value={2} onValueChange={change} />);
+    const input = screen.getByRole('textbox');
+    await userEvent.click(input);
     await userEvent.keyboard('{ArrowUp}');
-    expect(input).toHaveValue('$6 EUR');
+    expect(change).toHaveBeenCalledOnce();
+    expect(input).toHaveValue('2');
+    rerender(
+      <Controlled aria-label="Points" value={2} onValueChange={change} onKeyDown={(event) => event.preventDefault()} />,
+    );
+    await userEvent.keyboard('{ArrowUp}');
+    expect(change).toHaveBeenCalledOnce();
   });
-
-  it('steps with buttons, which stay out of the accessibility tree', async () => {
-    render(<InputNumber aria-label="Points" showButtons defaultValue={1} />);
-    const [up, down] = document.querySelectorAll<HTMLButtonElement>('.tumaet-ui-input-number-button');
-    await userEvent.click(up!);
-    expect(screen.getByRole('spinbutton')).toHaveValue('2');
-    await userEvent.click(down!);
-    await userEvent.click(down!);
-    expect(screen.getByRole('spinbutton')).toHaveValue('0');
-    expect(screen.queryAllByRole('button')).toHaveLength(0);
+  it('targets the visible labelable input for FormField props, refs, render and events', async () => {
+    const ref = createRef<HTMLInputElement>();
+    const root = createRef<HTMLDivElement>();
+    const focus = vi.fn();
+    render(
+      <FormField label="Capacity" hint="Maximum size" invalid error="Too large">
+        {(control) => (
+          <InputNumber
+            {...control}
+            value={4}
+            ref={ref}
+            rootProps={{ ref: root }}
+            onFocus={focus}
+            render={(props, state) => <input {...props} data-numeric-value={state.value} />}
+          />
+        )}
+      </FormField>,
+    );
+    const input = screen.getByLabelText('Capacity');
+    expect(ref.current).toBe(input);
+    expect(input).toHaveAccessibleDescription('Too large');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input).toHaveAttribute('data-numeric-value', '4');
+    expect(root.current).not.toHaveAttribute('id');
+    await userEvent.click(screen.getByText('Capacity'));
+    expect(input).toHaveFocus();
+    expect(focus).toHaveBeenCalled();
+  });
+  it('serializes the raw number and supports caller-owned and canceled reset', async () => {
+    function Form() {
+      const [value, setValue] = useState<number | null>(2);
+      const [cancel, setCancel] = useState(true);
+      return (
+        <form
+          onReset={(event) => {
+            if (cancel) event.preventDefault();
+            else setValue(2);
+          }}
+        >
+          <InputNumber aria-label="Count" name="count" value={value} onValueChange={setValue} required />
+          <button type="reset">Reset</button>
+          <button type="button" onClick={() => setCancel(false)}>
+            Allow reset
+          </button>
+        </form>
+      );
+    }
+    const { container } = render(<Form />);
+    const form = container.querySelector('form')!;
+    const input = screen.getByRole('textbox');
+    await userEvent.clear(input);
+    expect(form.checkValidity()).toBe(false);
+    await userEvent.type(input, '5');
+    expect(Object.fromEntries(new FormData(form))).toEqual({ count: '5' });
+    await userEvent.click(screen.getByRole('button', { name: 'Reset' }));
+    expect(input).toHaveValue('5');
+    await userEvent.click(screen.getByRole('button', { name: 'Allow reset' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Reset' }));
+    expect(input).toHaveValue('2');
+    expect(Object.fromEntries(new FormData(form))).toEqual({ count: '2' });
+  });
+  it('honors disabled and readonly behavior and decorative affixes', async () => {
+    const change = vi.fn();
+    render(
+      <>
+        <InputNumber aria-label="Disabled" value={3} disabled onValueChange={change} showButtons />
+        <InputNumber aria-label="Read only" value={4} readOnly onValueChange={change} prefix="every" suffix="weeks" />
+      </>,
+    );
+    expect(screen.getByRole('textbox', { name: 'Disabled' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('textbox', { name: 'Read only' }));
+    await userEvent.keyboard('{ArrowUp}5');
+    expect(change).not.toHaveBeenCalled();
+    expect(screen.getByRole('textbox', { name: 'Read only' })).toHaveValue('4');
+    expect(screen.getByText('weeks')).toHaveAttribute('aria-hidden', 'true');
+  });
+  it('localizes generated stepper names and number-field semantics through the library provider', () => {
+    const translations: Record<string, string> = {
+      'tumAetUi.inputNumber.increment': 'Mehr',
+      'tumAetUi.inputNumber.decrement': 'Weniger',
+      'tumAetUi.inputNumber.roleDescription': 'Zahlenfeld',
+    };
+    render(
+      <TumAetUiI18nProvider translate={(key) => translations[key] ?? key}>
+        <InputNumber aria-label="Anzahl" value={3} showButtons />
+      </TumAetUiI18nProvider>,
+    );
+    expect(screen.getByRole('textbox', { name: 'Anzahl' })).toHaveAttribute('aria-roledescription', 'Zahlenfeld');
+    expect(screen.getByRole('button', { name: 'Mehr' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Weniger' })).toBeEnabled();
   });
 
   it('has no axe violations', async () => {
-    const { container } = render(<InputNumber aria-label="Points" showButtons defaultValue={3} min={0} max={9} />);
+    const { container } = render(<InputNumber aria-label="Count" value={3} showButtons />);
     await expectNoA11yViolations(container);
-  });
-
-  describe('behaviour from the Angular spec', () => {
-    const typeInto = async (input: HTMLElement, text: string) => userEvent.type(input, text);
-
-    it('forwards native and accessibility attributes to the inner input', () => {
-      render(
-        <>
-          <span id="lbl">Capacity</span>
-          <InputNumber
-            id="capacity"
-            name="cap"
-            placeholder="Capacity"
-            aria-labelledby="lbl"
-            aria-describedby="help"
-            min={1}
-            max={50}
-          />
-        </>,
-      );
-      const input = screen.getByRole('spinbutton', { name: 'Capacity' });
-      expect(input).toHaveAttribute('type', 'text');
-      expect(input).toHaveAttribute('inputmode', 'numeric');
-      expect(input).toHaveAttribute('id', 'capacity');
-      expect(input).toHaveAttribute('name', 'cap');
-      expect(input).toHaveAttribute('placeholder', 'Capacity');
-      expect(input).toHaveAttribute('aria-describedby', 'help');
-      expect(input).toHaveAttribute('aria-valuemin', '1');
-      expect(input).toHaveAttribute('aria-valuemax', '50');
-      expect(input).not.toHaveAttribute('aria-valuenow');
-    });
-
-    it('renders the stepper only with showButtons', () => {
-      const { rerender } = render(<InputNumber aria-label="n" />);
-      expect(document.querySelectorAll('.tumaet-ui-input-number-button')).toHaveLength(0);
-      rerender(<InputNumber aria-label="n" showButtons />);
-      expect(document.querySelectorAll('.tumaet-ui-input-number-button')).toHaveLength(2);
-    });
-
-    it('formats with grouping, a locale, and without grouping', () => {
-      const { rerender } = render(<InputNumber aria-label="n" locale="en" value={5000} />);
-      expect(screen.getByRole('spinbutton')).toHaveValue('5,000');
-      rerender(<InputNumber aria-label="n" locale="de" value={5000} />);
-      expect(screen.getByRole('spinbutton')).toHaveValue('5.000');
-      rerender(<InputNumber aria-label="n" locale="en" useGrouping={false} value={5000} />);
-      expect(screen.getByRole('spinbutton')).toHaveValue('5000');
-    });
-
-    it('parses typed digits, ignoring separators, and reports null when emptied', async () => {
-      const onChange = vi.fn();
-      render(<InputNumber aria-label="n" locale="en" onChange={onChange} />);
-      const input = screen.getByRole('spinbutton');
-      await typeInto(input, '1234');
-      expect(onChange).toHaveBeenLastCalledWith(1234);
-      await userEvent.clear(input);
-      expect(onChange).toHaveBeenLastCalledWith(null);
-      expect(input).not.toHaveAttribute('aria-valuenow');
-    });
-
-    it('keeps prefix and suffix around typed numbers', async () => {
-      const onChange = vi.fn();
-      render(<InputNumber aria-label="n" prefix="every " suffix=" week(s)" defaultValue={2} onChange={onChange} />);
-      const input = screen.getByRole('spinbutton');
-      expect(input).toHaveValue('every 2 week(s)');
-      await userEvent.clear(input);
-      await typeInto(input, 'every 3 week(s)');
-      expect(onChange).toHaveBeenLastCalledWith(3);
-      expect(input).toHaveValue('every 3 week(s)');
-      expect(input).toHaveAttribute('aria-valuetext', 'every 3 week(s)');
-    });
-
-    it('clamps to min and max on blur', async () => {
-      const onChange = vi.fn();
-      render(<InputNumber aria-label="n" locale="en" min={1} max={5000} onChange={onChange} />);
-      const input = screen.getByRole('spinbutton');
-      await typeInto(input, '99999');
-      expect(onChange).toHaveBeenLastCalledWith(99999);
-      await userEvent.tab();
-      expect(onChange).toHaveBeenLastCalledWith(5000);
-      expect(input).toHaveValue('5,000');
-    });
-
-    it('steps with the buttons and keys, clamps, and starts from the lower bound when empty', async () => {
-      render(<InputNumber aria-label="n" showButtons min={1} max={5} />);
-      const input = screen.getByRole('spinbutton');
-      const [up, down] = document.querySelectorAll<HTMLButtonElement>('.tumaet-ui-input-number-button');
-      await userEvent.click(up!);
-      expect(input).toHaveValue('1');
-      await userEvent.click(up!);
-      await userEvent.click(up!);
-      expect(input).toHaveValue('3');
-      for (let i = 0; i < 4; i++) await userEvent.click(down!);
-      expect(input).toHaveValue('1');
-      expect(input).toHaveFocus();
-      await userEvent.keyboard('{ArrowUp}');
-      expect(input).toHaveValue('2');
-      await userEvent.keyboard('{ArrowDown}');
-      expect(input).toHaveValue('1');
-    });
-
-    it('does not step or accept input while disabled or read-only', async () => {
-      const onChange = vi.fn();
-      const { unmount } = render(<InputNumber aria-label="n" showButtons disabled onChange={onChange} />);
-      const [up] = document.querySelectorAll<HTMLButtonElement>('.tumaet-ui-input-number-button');
-      expect(screen.getByRole('spinbutton')).toBeDisabled();
-      expect(up).toBeDisabled();
-      await userEvent.click(up!);
-      expect(onChange).not.toHaveBeenCalled();
-      unmount();
-
-      render(<InputNumber aria-label="n" showButtons readOnly defaultValue={3} onChange={onChange} />);
-      const input = screen.getByRole('spinbutton');
-      input.focus();
-      await userEvent.keyboard('{ArrowUp}');
-      await userEvent.click(document.querySelectorAll<HTMLButtonElement>('.tumaet-ui-input-number-button')[0]!);
-      expect(onChange).not.toHaveBeenCalled();
-      expect(input).toHaveValue('3');
-    });
-
-    it('lets a negative number be typed digit by digit without erasing the minus', async () => {
-      const onChange = vi.fn();
-      render(<InputNumber aria-label="n" locale="en" min={-100} onChange={onChange} />);
-      const input = screen.getByRole('spinbutton');
-      await typeInto(input, '-');
-      expect(input).toHaveValue('-');
-      expect(onChange).toHaveBeenLastCalledWith(null);
-      await typeInto(input, '5');
-      expect(input).toHaveValue('-5');
-      expect(onChange).toHaveBeenLastCalledWith(-5);
-    });
-
-    it('parses the digits, grouping and minus sign of the configured locale', async () => {
-      const locale = 'fa-IR-u-nu-arabext';
-      const formatted = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(-1234);
-      const onChange = vi.fn();
-      render(<InputNumber aria-label="n" locale={locale} min={-5000} onChange={onChange} />);
-      const input = screen.getByRole('spinbutton');
-      await typeInto(input, formatted);
-      expect(onChange).toHaveBeenLastCalledWith(-1234);
-      expect(input).toHaveValue(formatted);
-    });
-
-    it('keeps the caret in place while formatting a mid-string edit', async () => {
-      const onChange = vi.fn();
-      render(<InputNumber aria-label="n" locale="en" onChange={onChange} />);
-      const input = screen.getByRole<HTMLInputElement>('spinbutton');
-      await typeInto(input, '1234');
-      expect(input).toHaveValue('1,234');
-      await userEvent.type(input, '5', { initialSelectionStart: 3, initialSelectionEnd: 3 });
-      expect(onChange).toHaveBeenLastCalledWith(12534);
-      expect(input).toHaveValue('12,534');
-      expect(input.selectionStart).toBe(4);
-    });
-
-    it('keeps the caret in place with localized digits', async () => {
-      render(<InputNumber aria-label="n" locale="ar-EG-u-nu-arab" />);
-      const input = screen.getByRole<HTMLInputElement>('spinbutton');
-      await typeInto(input, '١٢٣٤');
-      expect(input).toHaveValue('١٬٢٣٤');
-      await userEvent.type(input, '٥', { initialSelectionStart: 3, initialSelectionEnd: 3 });
-      expect(input).toHaveValue('١٢٬٥٣٤');
-      expect(input.selectionStart).toBe(4);
-    });
-
-    it('reflects a value changed from outside while the field is focused', () => {
-      const { rerender } = render(<InputNumber aria-label="n" locale="en" value={1234} />);
-      const input = screen.getByRole('spinbutton');
-      input.focus();
-      rerender(<InputNumber aria-label="n" locale="en" value={42} />);
-      expect(input).toHaveValue('42');
-      rerender(<InputNumber aria-label="n" locale="en" value={null} />);
-      expect(input).toHaveValue('');
-    });
-
-    it('marks the field invalid', () => {
-      render(<InputNumber aria-label="n" invalid />);
-      expect(screen.getByRole('spinbutton')).toHaveAttribute('aria-invalid', 'true');
-      expect(screen.getByRole('spinbutton')).toHaveAttribute('data-invalid');
-    });
-
-    describe('decimals', () => {
-      it('switches the inputmode and formats fractions', () => {
-        const { rerender } = render(<InputNumber aria-label="n" locale="en" maxFractionDigits={1} value={12.5} />);
-        const input = screen.getByRole('spinbutton');
-        expect(input).toHaveAttribute('inputmode', 'decimal');
-        expect(input).toHaveValue('12.5');
-        rerender(<InputNumber aria-label="n" locale="en" maxFractionDigits={0} value={12.5} />);
-        expect(input).toHaveAttribute('inputmode', 'numeric');
-      });
-
-      it('keeps a trailing decimal separator while it is typed', async () => {
-        const onChange = vi.fn();
-        render(<InputNumber aria-label="n" locale="en" maxFractionDigits={1} onChange={onChange} />);
-        const input = screen.getByRole('spinbutton');
-        await typeInto(input, '12.');
-        expect(input).toHaveValue('12.');
-        expect(onChange).toHaveBeenLastCalledWith(12);
-        await typeInto(input, '5');
-        expect(onChange).toHaveBeenLastCalledWith(12.5);
-      });
-
-      it('truncates the fraction and formats on blur', async () => {
-        const onChange = vi.fn();
-        render(<InputNumber aria-label="n" locale="en" maxFractionDigits={1} onChange={onChange} />);
-        const input = screen.getByRole('spinbutton');
-        await typeInto(input, '12.55');
-        expect(onChange).toHaveBeenLastCalledWith(12.5);
-        await userEvent.tab();
-        expect(input).toHaveValue('12.5');
-      });
-
-      it('uses the locale decimal separator and ignores its grouping separator', async () => {
-        const onChange = vi.fn();
-        render(<InputNumber aria-label="n" locale="de" maxFractionDigits={1} onChange={onChange} />);
-        const input = screen.getByRole('spinbutton');
-        await typeInto(input, '1.234,5');
-        expect(onChange).toHaveBeenLastCalledWith(1234.5);
-        await userEvent.tab();
-        expect(input).toHaveValue('1.234,5');
-      });
-
-      it('accepts extra decimal separators when asked to', async () => {
-        const onChange = vi.fn();
-        render(
-          <InputNumber
-            aria-label="n"
-            locale="de"
-            maxFractionDigits={1}
-            useGrouping={false}
-            acceptedDecimalSeparators={['.']}
-            onChange={onChange}
-          />,
-        );
-        await typeInto(screen.getByRole('spinbutton'), '1.5');
-        expect(onChange).toHaveBeenLastCalledWith(1.5);
-      });
-
-      it('steps a fractional step without float error', async () => {
-        render(
-          <InputNumber aria-label="n" locale="en" maxFractionDigits={1} step={0.1} showButtons defaultValue={0.2} />,
-        );
-        await userEvent.click(document.querySelectorAll<HTMLButtonElement>('.tumaet-ui-input-number-button')[0]!);
-        expect(screen.getByRole('spinbutton')).toHaveAttribute('aria-valuenow', '0.3');
-      });
-
-      it('adds the step as it is by default, and snaps to the grid with snapToStep', async () => {
-        const { rerender } = render(
-          <InputNumber aria-label="n" locale="en" maxFractionDigits={1} step={0.5} defaultValue={1.3} showButtons />,
-        );
-        const input = screen.getByRole('spinbutton');
-        const [up, down] = document.querySelectorAll<HTMLButtonElement>('.tumaet-ui-input-number-button');
-        await userEvent.click(up!);
-        expect(input).toHaveAttribute('aria-valuenow', '1.8');
-
-        const onChange = vi.fn();
-        rerender(
-          <InputNumber
-            aria-label="n"
-            locale="en"
-            maxFractionDigits={1}
-            step={0.5}
-            snapToStep
-            showButtons
-            value={1.3}
-            onChange={onChange}
-          />,
-        );
-        await userEvent.click(up!);
-        expect(onChange).toHaveBeenLastCalledWith(1.5);
-        await userEvent.click(down!);
-        expect(onChange).toHaveBeenLastCalledWith(1);
-        input.focus();
-        await userEvent.keyboard('{ArrowUp}');
-        expect(onChange).toHaveBeenLastCalledWith(1.5);
-      });
-
-      it('groups the integer part and clamps on blur', async () => {
-        const onChange = vi.fn();
-        render(<InputNumber aria-label="n" locale="en" maxFractionDigits={1} min={0} max={9999} onChange={onChange} />);
-        const input = screen.getByRole('spinbutton');
-        await typeInto(input, '1234.5');
-        await userEvent.tab();
-        expect(input).toHaveValue('1,234.5');
-        await userEvent.clear(input);
-        await typeInto(input, '99999.9');
-        await userEvent.tab();
-        expect(onChange).toHaveBeenLastCalledWith(9999);
-      });
-    });
-
-    it('is described and named by an enclosing FormField', () => {
-      render(
-        <FormField label="Capacity" hint="Maximum group size">
-          {(control) => <InputNumber {...control} />}
-        </FormField>,
-      );
-      const input = screen.getByRole('spinbutton', { name: 'Capacity' });
-      expect(input).toHaveAccessibleDescription('Maximum group size');
-    });
   });
 });

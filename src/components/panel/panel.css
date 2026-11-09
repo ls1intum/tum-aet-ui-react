@@ -19,7 +19,7 @@
   padding: calc(var(--tumaet-ui-spacing) * 4.5);
 }
 
-.tumaet-ui-panel-header-toggleable {
+.tumaet-ui-panel-header:has(.tumaet-ui-panel-toggler) {
   padding: calc(var(--tumaet-ui-spacing) * 1.5) calc(var(--tumaet-ui-spacing) * 4.5);
 }
 
@@ -55,19 +55,29 @@
   background-color: color-mix(in srgb, currentcolor 8%, transparent);
 }
 
+.tumaet-ui-panel-toggler[data-panel-open] .tumaet-ui-panel-toggle-icon {
+  rotate: 180deg;
+}
+
 .tumaet-ui-panel-toggler:focus-visible {
   outline: 2px solid var(--tumaet-ui-focus-color);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
 .tumaet-ui-panel-content-container {
-  display: grid;
-  grid-template-rows: 1fr;
-  transition: grid-template-rows 0.2s ease-in-out;
+  overflow: hidden;
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI measures disclosure content for transitions. */
+  height: var(--collapsible-panel-height);
+  transition: height 0.2s ease-in-out;
 }
 
-.tumaet-ui-panel[data-collapsed='true'] > .tumaet-ui-panel-content-container {
-  grid-template-rows: 0fr;
+.tumaet-ui-panel-content-container[data-starting-style],
+.tumaet-ui-panel-content-container[data-ending-style] {
+  height: 0;
+}
+
+.tumaet-ui-panel-content-container[hidden] {
+  display: none;
 }
 
 .tumaet-ui-panel-content-wrapper {

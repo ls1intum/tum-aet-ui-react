@@ -21,7 +21,7 @@
   line-height: var(--tumaet-ui-line-height-lg);
 }
 
-.tumaet-ui-select-button[aria-disabled='true'] {
+.tumaet-ui-select-button[data-disabled] {
   opacity: 0.6;
 }
 
@@ -57,7 +57,7 @@
     box-shadow 0.2s;
 }
 
-.tumaet-ui-select-button-option[aria-pressed='true'] {
+.tumaet-ui-select-button-option[data-pressed] {
   border-color: var(--tumaet-ui-primary-color);
   color: var(--tumaet-ui-primary-contrast-color);
   background-color: var(--tumaet-ui-primary-color);
@@ -71,6 +71,28 @@
 
 .tumaet-ui-select-button-option:last-child {
   border-start-end-radius: var(--tumaet-ui-radius-md);
+  border-end-end-radius: var(--tumaet-ui-radius-md);
+}
+
+.tumaet-ui-select-button[data-orientation='vertical'] {
+  flex-direction: column;
+}
+
+.tumaet-ui-select-button[data-orientation='vertical'] > .tumaet-ui-select-button-option {
+  border-block-width: 0;
+  border-block-end-width: 1px;
+  border-inline-width: 1px;
+  border-radius: 0;
+}
+
+.tumaet-ui-select-button[data-orientation='vertical'] > .tumaet-ui-select-button-option:first-child {
+  border-block-start-width: 1px;
+  border-start-start-radius: var(--tumaet-ui-radius-md);
+  border-start-end-radius: var(--tumaet-ui-radius-md);
+}
+
+.tumaet-ui-select-button[data-orientation='vertical'] > .tumaet-ui-select-button-option:last-child {
+  border-end-start-radius: var(--tumaet-ui-radius-md);
   border-end-end-radius: var(--tumaet-ui-radius-md);
 }
 
@@ -108,7 +130,7 @@
 }
 
 @media (forced-colors: active) {
-  .tumaet-ui-select-button-option[aria-pressed='true'] {
+  .tumaet-ui-select-button-option[data-pressed] {
     border-color: Highlight;
     color: HighlightText;
     background: Highlight;

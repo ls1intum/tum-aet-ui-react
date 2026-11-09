@@ -1,32 +1,26 @@
-.tumaet-ui-select {
-  position: relative;
-
-  display: inline-flex;
-
-  width: 100%;
-  max-width: 100%;
-
-  font-family: var(--tumaet-ui-font-family);
-  font-size: var(--tumaet-ui-font-size-base);
-  line-height: var(--tumaet-ui-line-height-base);
-  color: var(--tumaet-ui-text-color);
+.tumaet-ui-select-positioner {
+  z-index: 1100;
 }
 
 .tumaet-ui-select-trigger {
   cursor: pointer;
 
   display: flex;
+  gap: calc(var(--tumaet-ui-spacing) * 2);
   align-items: center;
 
   box-sizing: border-box;
   width: 100%;
   min-height: calc(var(--tumaet-ui-spacing) * 10);
   padding-block: calc(var(--tumaet-ui-spacing) * 2);
-  padding-inline: calc(var(--tumaet-ui-spacing) * 3) calc(var(--tumaet-ui-spacing) * 10);
+  padding-inline: calc(var(--tumaet-ui-spacing) * 3);
   border: 1px solid var(--tumaet-ui-control-border-color);
   border-radius: var(--tumaet-ui-radius-md);
 
   font: inherit;
+  font-family: var(--tumaet-ui-font-family);
+  font-size: var(--tumaet-ui-font-size-base);
+  line-height: var(--tumaet-ui-line-height-base);
   color: var(--tumaet-ui-text-color);
   text-align: start;
 
@@ -35,12 +29,10 @@
 
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 0.15s;
-
-  /* Tailwind's transition-colors. */
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
 }
 
-.tumaet-ui-select[data-size='small'] .tumaet-ui-select-trigger {
+.tumaet-ui-select-trigger[data-size='small'] {
   min-height: calc(var(--tumaet-ui-spacing) * 8);
   padding-block: calc(var(--tumaet-ui-spacing) * 1.5);
   padding-inline-start: calc(var(--tumaet-ui-spacing) * 2.5);
@@ -49,7 +41,7 @@
   line-height: var(--tumaet-ui-line-height-sm);
 }
 
-.tumaet-ui-select[data-size='large'] .tumaet-ui-select-trigger {
+.tumaet-ui-select-trigger[data-size='large'] {
   min-height: calc(var(--tumaet-ui-spacing) * 12);
   padding-block: calc(var(--tumaet-ui-spacing) * 2.5);
   padding-inline-start: calc(var(--tumaet-ui-spacing) * 3.5);
@@ -58,19 +50,15 @@
   line-height: var(--tumaet-ui-line-height-lg);
 }
 
-.tumaet-ui-select-trigger[data-clearable] {
-  padding-inline-end: calc(var(--tumaet-ui-spacing) * 17);
-}
-
 .tumaet-ui-select-trigger:hover:not(:disabled) {
   border-color: var(--tumaet-ui-control-border-hover-color);
 }
 
-.tumaet-ui-select[data-open] .tumaet-ui-select-trigger {
+.tumaet-ui-select-trigger[data-popup-open] {
   border-color: var(--tumaet-ui-primary-color);
 }
 
-.tumaet-ui-select .tumaet-ui-select-trigger[data-invalid] {
+.tumaet-ui-select-trigger[aria-invalid='true'] {
   border-color: var(--tumaet-ui-state-danger);
 }
 
@@ -79,7 +67,7 @@
   outline-offset: 2px;
 }
 
-.tumaet-ui-select .tumaet-ui-select-trigger:disabled {
+.tumaet-ui-select-trigger:disabled {
   cursor: default;
 
   border-color: var(--tumaet-ui-control-border-color);
@@ -105,50 +93,10 @@
 }
 
 .tumaet-ui-select-chevron {
-  pointer-events: none;
-
-  position: absolute;
-  inset-block: 0;
-  inset-inline-end: 0;
-
   display: flex;
-  align-items: center;
-  justify-content: center;
-
-  width: calc(var(--tumaet-ui-spacing) * 10);
-
+  flex: none;
+  margin-inline-start: auto;
   color: var(--tumaet-ui-muted-color);
-}
-
-.tumaet-ui-select-clear {
-  cursor: pointer;
-
-  position: absolute;
-  inset-block: 0;
-  inset-inline-end: calc(var(--tumaet-ui-spacing) * 10);
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  width: calc(var(--tumaet-ui-spacing) * 6);
-  padding: 0;
-  border: 0;
-
-  color: var(--tumaet-ui-muted-color);
-
-  appearance: none;
-  background: transparent;
-}
-
-.tumaet-ui-select-clear:hover {
-  color: var(--tumaet-ui-text-hover-color);
-}
-
-.tumaet-ui-select-clear:focus-visible {
-  border-radius: var(--tumaet-ui-radius-sm);
-  outline: 2px solid var(--tumaet-ui-focus-color);
-  outline-offset: -2px;
 }
 
 .tumaet-ui-select-check {
@@ -157,37 +105,31 @@
 }
 
 .tumaet-ui-select-panel {
+  overflow-y: auto;
+
   box-sizing: border-box;
-  color: var(--tumaet-ui-text-color);
-}
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI's public anchor measurement. */
+  min-width: var(--anchor-width);
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI's public collision measurement. */
+  max-height: var(--available-height);
+  border: 1px solid var(--tumaet-ui-border-color);
+  border-radius: var(--tumaet-ui-radius-md);
 
-.tumaet-ui-select-filter-wrapper {
-  padding: calc(var(--tumaet-ui-spacing) * 1);
-  border-bottom: 1px solid var(--tumaet-ui-border-color);
-}
-
-.tumaet-ui-select-filter {
-  box-sizing: border-box;
-  width: 100%;
-  padding: calc(var(--tumaet-ui-spacing) * 1.5) calc(var(--tumaet-ui-spacing) * 2);
-  border: 1px solid var(--tumaet-ui-control-border-color);
-  border-radius: var(--tumaet-ui-radius-sm);
-
-  font: inherit;
-  font-size: var(--tumaet-ui-font-size-sm);
-  line-height: var(--tumaet-ui-line-height-sm);
   color: var(--tumaet-ui-text-color);
 
-  appearance: none;
-  background: var(--tumaet-ui-control-background);
+  background: var(--tumaet-ui-overlay-background);
+  box-shadow: var(--tumaet-ui-shadow-lg);
 }
 
-.tumaet-ui-select-filter::placeholder {
-  color: var(--tumaet-ui-muted-color);
+.tumaet-ui-select-panel .tumaet-ui-listbox-option[data-highlighted] {
+  color: var(--tumaet-ui-highlight-color);
+  background: var(--tumaet-ui-highlight-focus-background);
 }
 
-.tumaet-ui-select-filter:focus-visible {
+.tumaet-ui-select-panel:focus-visible,
+.tumaet-ui-select-panel .tumaet-ui-listbox-option:focus-visible {
   outline: 2px solid var(--tumaet-ui-focus-color);
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

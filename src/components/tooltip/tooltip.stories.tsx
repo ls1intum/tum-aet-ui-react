@@ -1,129 +1,140 @@
+import { useId, useRef } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, screen, waitForElementToBeRemoved } from 'storybook/test';
+import { expect, screen, userEvent } from 'storybook/test';
 import { Button } from '../button';
-import { Tooltip } from './tooltip';
+import {
+  Tooltip,
+  TooltipProvider,
+  TooltipTrigger,
+  TooltipPortal,
+  TooltipPositioner,
+  TooltipPopup,
+  TooltipArrow,
+} from './tooltip';
 
-const TEXT = 'Downloads the current result as a CSV file';
-
+const TEXT = 'Download a CSV of the current results';
 const meta = {
   title: 'Overlays/Tooltip',
   component: Tooltip,
-  args: {
-    content: TEXT,
-    placement: 'top',
-    showDelay: 150,
-    hideDelay: 100,
-    describesHost: true,
-    children: <Button>Export</Button>,
+  render: function Render(args) {
+    const descriptionId = useId();
+    return (
+      <TooltipProvider delay={150} closeDelay={100}>
+        <Tooltip {...args}>
+          <TooltipTrigger render={<Button />} aria-describedby={descriptionId}>
+            Export
+          </TooltipTrigger>
+          <TooltipPortal>
+            <TooltipPositioner>
+              <TooltipPopup id={descriptionId}>
+                {TEXT}
+                <TooltipArrow />
+              </TooltipPopup>
+            </TooltipPositioner>
+          </TooltipPortal>
+        </Tooltip>
+      </TooltipProvider>
+    );
   },
-  argTypes: {
-    placement: { control: 'inline-radio', options: ['top', 'right', 'bottom', 'left'] },
-    content: { control: 'text' },
-    children: { control: false },
-  },
-  decorators: [
-    (Story) => (
-      <div style={{ padding: '4rem 8rem' }}>
-        <Story />
-      </div>
-    ),
-  ],
   parameters: {
     docs: {
       description: {
         component:
-          'Short, non-interactive hint shown on hover and keyboard focus of its single child and linked to it through `aria-describedby` while open. Escape dismisses it without moving focus, pressing the child hides it, and touch never shows it. The bubble stays open while the pointer travels onto it. `content` is a string, a list of strings (rendered as bullets) or any non-interactive node; nothing is shown when it is empty. Set `describesHost={false}` when the host is already described by permanent text. The child must accept a ref and DOM event props.',
+          'Compose Trigger, Portal, Positioner and Popup with optional Arrow. Base UI owns hover, focus, Escape and delays. Optional descriptions use an explicit popup id and Trigger aria-describedby; label the trigger independently. Provider shares hover delays across nearby hints; keyboard focus opens immediately. Put essential information in visible text. Popup accepts variant="list" for wider non-interactive content. Portal accepts container for scoped themes.',
       },
     },
   },
 } satisfies Meta<typeof Tooltip>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
-
-export const Open: Story = {
-  tags: ['!autodocs'],
-  play: async ({ canvas, userEvent }) => {
-    const trigger = canvas.getByRole('button', { name: 'Export' });
-    await userEvent.tab();
-
-    const tooltip = await screen.findByRole('tooltip', { name: TEXT });
-    await expect(trigger).toHaveAttribute('aria-describedby', tooltip.id);
-  },
-};
-
-export const Placements: Story = {
-  parameters: { layout: 'padded' },
-  render: (args) => (
-    <div style={{ display: 'flex', gap: '8rem', padding: '4rem 10rem' }}>
-      {(['top', 'right', 'bottom', 'left'] as const).map((placement) => (
-        <Tooltip key={placement} {...args} placement={placement} content={`Placed ${placement}`}>
-          <Button variant="outlined">{placement}</Button>
-        </Tooltip>
-      ))}
-    </div>
-  ),
-};
-
-/** Several items render as a bulleted list in a wider bubble. */
-export const List: Story = {
-  args: {
-    content: ['Needs at least one submission', 'Is not yet graded', 'Due date has passed'],
-    children: <Button variant="outlined">Why disabled?</Button>,
-  },
-};
-
-/** Any non-interactive node works; the bubble stays as wide as the list form. */
-export const RichContent: Story = {
-  args: {
-    content: (
-      <>
-        <strong>Grading guidance</strong>
-        <div>5 points</div>
-      </>
-    ),
-    children: <Button variant="outlined">Help</Button>,
-  },
-};
-
-/** A host that is described by permanent markup does not get announced twice. */
-export const DoesNotDescribeHost: Story = {
-  args: { describesHost: false },
-};
-
-export const DismissesWithEscape: Story = {
-  tags: ['!dev', '!autodocs'],
-  play: async ({ canvas, userEvent }) => {
-    await userEvent.tab();
-    const tooltip = await screen.findByRole('tooltip', { name: TEXT });
-    const tooltipRemoved = waitForElementToBeRemoved(tooltip);
-    await userEvent.keyboard('{Escape}');
-    await tooltipRemoved;
-    await expect(canvas.getByRole('button', { name: 'Export' })).toHaveFocus();
-  },
-};
-
-export const Hoverable: Story = {
-  tags: ['!dev', '!autodocs'],
-  play: async ({ canvas, userEvent }) => {
+export const Shown: Story = {
+  play: async ({ canvas }) => {
     const trigger = canvas.getByRole('button', { name: 'Export' });
     await userEvent.hover(trigger);
-    const tooltip = await screen.findByRole('tooltip', { name: TEXT });
+    await expect(await screen.findByRole('tooltip')).toBeVisible();
+    await expect(trigger).toHaveAccessibleDescription(TEXT);
+  },
+};
+export const List: Story = {
+  render: () => (
+    <Tooltip>
+      <TooltipTrigger render={<Button variant="outlined" />}>Validation reasons</TooltipTrigger>
+      <TooltipPortal>
+        <TooltipPositioner>
+          <TooltipPopup variant="list">
+            <ul>
+              <li>Needs at least one submission</li>
+              <li>Is not yet graded</li>
+              <li>Due date has passed</li>
+            </ul>
+            <TooltipArrow />
+          </TooltipPopup>
+        </TooltipPositioner>
+      </TooltipPortal>
+    </Tooltip>
+  ),
+};
+export const DisabledControl: Story = {
+  render: () => (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span
+            tabIndex={0}
+            role="button"
+            aria-disabled="true"
+            aria-label="Export unavailable"
+            style={{ display: 'inline-flex' }}
+          />
+        }
+      >
+        <Button disabled style={{ pointerEvents: 'none' }}>
+          Export
+        </Button>
+      </TooltipTrigger>
+      <TooltipPortal>
+        <TooltipPositioner>
+          <TooltipPopup>
+            Choose a course before exporting
+            <TooltipArrow />
+          </TooltipPopup>
+        </TooltipPositioner>
+      </TooltipPortal>
+    </Tooltip>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: 'A focusable wrapper receives hover and keyboard focus around the native disabled button.',
+      },
+    },
+  },
+};
 
-    const bounds = tooltip.getBoundingClientRect();
-    await userEvent.unhover(trigger);
-    // The hint is transparent to pointer events, so the underlying document receives movement over its bounds.
-    await userEvent.pointer({
-      target: tooltip.ownerDocument.body,
-      coords: { clientX: bounds.left + bounds.width / 2, clientY: bounds.top + bounds.height / 2 },
-    });
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    await expect(tooltip).toBeVisible();
-
-    const tooltipRemoved = waitForElementToBeRemoved(tooltip);
-    await userEvent.keyboard('{Escape}');
-    await tooltipRemoved;
+function ScopedTooltip() {
+  const portalHost = useRef<HTMLDivElement>(null);
+  return (
+    <div data-theme="dark" className="tumaet-ui-root" style={{ padding: 24 }}>
+      <Tooltip>
+        <TooltipTrigger render={<Button variant="outlined" />}>Scoped dark hint</TooltipTrigger>
+        <TooltipPortal container={portalHost}>
+          <TooltipPositioner>
+            <TooltipPopup>
+              {TEXT}
+              <TooltipArrow />
+            </TooltipPopup>
+          </TooltipPositioner>
+        </TooltipPortal>
+      </Tooltip>
+      <div ref={portalHost} />
+    </div>
+  );
+}
+export const ScopedTheme: Story = {
+  render: () => <ScopedTooltip />,
+  parameters: {
+    docs: { description: { story: 'The portal host is inside the theme boundary and outside clipping containers.' } },
   },
 };

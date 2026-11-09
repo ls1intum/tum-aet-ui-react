@@ -22,6 +22,7 @@
   width: 100%;
   min-width: 0;
   max-width: 100%;
+  padding: var(--tumaet-ui-spacing);
   border-bottom: 1px solid var(--tumaet-ui-border-color);
 }
 
@@ -31,15 +32,43 @@
   position: absolute;
   inset-block-end: 0;
   left: 0;
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI positions the selected tab. */
+  transform: translateX(var(--active-tab-left));
 
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI measures the selected tab. */
+  width: var(--active-tab-width);
   height: 2px;
 
   background: var(--tumaet-ui-primary-color);
-}
 
-.tumaet-ui-tab-indicator[data-animate] {
   transition:
     width 250ms cubic-bezier(0.35, 0, 0.25, 1),
+    transform 250ms cubic-bezier(0.35, 0, 0.25, 1);
+}
+
+.tumaet-ui-tabs[data-orientation='vertical'] {
+  flex-direction: row;
+}
+
+.tumaet-ui-tab-list[data-orientation='vertical'] {
+  flex-direction: column;
+  width: auto;
+  border-block-end: 0;
+  border-inline-end: 1px solid var(--tumaet-ui-border-color);
+}
+
+.tumaet-ui-tab-indicator[data-orientation='vertical'] {
+  inset-block: 0 auto;
+  inset-inline: auto 0;
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI positions the selected vertical tab. */
+  transform: translateY(var(--active-tab-top));
+
+  width: 2px;
+  /* stylelint-disable-next-line custom-property-pattern -- Base UI measures the selected vertical tab. */
+  height: var(--active-tab-height);
+
+  transition:
+    height 250ms cubic-bezier(0.35, 0, 0.25, 1),
     transform 250ms cubic-bezier(0.35, 0, 0.25, 1);
 }
 
@@ -73,14 +102,13 @@
   color: var(--tumaet-ui-text-color);
 }
 
-.tumaet-ui-tab[data-state='active'] {
+.tumaet-ui-tab[data-active] {
   color: var(--tumaet-ui-accent-color);
 }
 
-/* Inset, so the focus ring is not clipped by the scrolling list. */
 .tumaet-ui-tab:focus-visible {
   outline: 2px solid var(--tumaet-ui-focus-color);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
 .tumaet-ui-tab[data-disabled] {
@@ -105,6 +133,7 @@
 
 .tumaet-ui-tab-panel:focus-visible {
   outline: 2px solid var(--tumaet-ui-focus-color);
+  outline-offset: 2px;
 }
 
 .tumaet-ui-tab-panel[data-fill] {
@@ -114,7 +143,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .tumaet-ui-tab-indicator,
-  .tumaet-ui-tab-indicator[data-animate],
+  .tumaet-ui-tab-indicator[data-orientation='vertical'],
   .tumaet-ui-tab {
     transition: none;
   }

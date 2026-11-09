@@ -6,6 +6,8 @@ import { defineConfig } from 'vitest/config';
 // Deliberately independent of vite.config.ts: no playground root or jsdom shims.
 export default defineConfig({
   plugins: [react()],
+  // Discover library and test dependencies before the browser runner starts.
+  optimizeDeps: { entries: ['src/index.ts', 'tests/browser/**/*.browser.test.tsx'] },
   test: {
     include: ['tests/browser/**/*.browser.test.tsx'],
     setupFiles: ['tests/browser/setup.ts'],
