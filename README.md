@@ -51,6 +51,8 @@ pnpm pack:check   # build, pack the tarball and verify its contents, exports and
 pnpm test:consumer latest   # install the tarball in a fresh app (or `minimum` for React 19.0.0)
 ```
 
+The `@typescript/native` alias supplies `tsc` for builds and typechecks. The `typescript` alias supplies the JavaScript compiler API used by ESLint and Storybook, following [Microsoft's side-by-side setup](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6.0).
+
 Releases are described in [RELEASING.md](RELEASING.md). Conventions for contributors and coding agents are in [AGENTS.md](AGENTS.md).
 
 The public paths remain `@tumaet/ui-react`, `@tumaet/ui-react/styles.css` and `@tumaet/ui-react/package.json`. Files below `dist/components` and `dist/internal` are implementation details, not supported deep imports. The declarations include explicit relative `.js` specifiers for NodeNext as well as bundler resolution. The stylesheet is explicitly side-effectful; importing one component does not split its CSS out of the full stylesheet.
