@@ -15,6 +15,7 @@
 
 .tumaet-ui-input-number-input {
   flex: 1 1 auto;
+  min-width: 0;
 }
 
 .tumaet-ui-input-number[data-fluid] .tumaet-ui-input-number-input {
@@ -74,4 +75,27 @@
 
 .tumaet-ui-input-number-decrement {
   border-end-end-radius: calc(var(--tumaet-ui-radius-md) - 1px);
+}
+
+.tumaet-ui-input-number-prefix,
+.tumaet-ui-input-number-suffix {
+  display: inline-flex;
+  align-items: center;
+  padding-inline: calc(var(--tumaet-ui-spacing) * 2);
+  color: var(--tumaet-ui-muted-color);
+}
+
+.tumaet-ui-input-number-button:focus-visible {
+  outline: 2px solid var(--tumaet-ui-focus-color);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tumaet-ui-input-number-button {
+    transition: none;
+  }
+}
+
+.tumaet-ui-input-number[data-buttons] > .tumaet-ui-input-number-suffix {
+  padding-inline-end: calc(var(--tumaet-ui-spacing) * 13);
 }

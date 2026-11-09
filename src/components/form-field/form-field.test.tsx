@@ -54,11 +54,13 @@ describe('FormField', () => {
       <>
         <p id="extra">Extra context</p>
         <FormField label="Points" hint="Available points">
-          {(control) => <InputNumber {...control} aria-describedby={`extra ${control['aria-describedby'] ?? ''}`} />}
+          {(control) => (
+            <InputNumber {...control} value={null} aria-describedby={`extra ${control['aria-describedby'] ?? ''}`} />
+          )}
         </FormField>
       </>,
     );
-    expect(screen.getByRole('spinbutton', { name: 'Points' })).toHaveAccessibleDescription(
+    expect(screen.getByRole('textbox', { name: 'Points' })).toHaveAccessibleDescription(
       'Extra context Available points',
     );
   });

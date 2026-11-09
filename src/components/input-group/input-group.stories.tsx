@@ -1,4 +1,5 @@
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
+import { useState } from 'react';
 import { Input } from '../input/input';
 import { InputNumber } from '../input-number/input-number';
 import { InputGroup, InputGroupAddon } from './input-group';
@@ -78,26 +79,31 @@ export const TrailingAddonOnly: Story = {
 };
 
 export const WithInputNumber: Story = {
-  render: () => (
-    <>
-      <label htmlFor="grouped-capacity" style={labelStyle}>
-        Capacity
-      </label>
-      <InputGroup>
-        <InputGroupAddon>#</InputGroupAddon>
-        <InputNumber
-          id="grouped-capacity"
-          aria-describedby="capacity-help"
-          showButtons
-          min={0}
-          max={5000}
-          locale="en-US"
-        />
-        <InputGroupAddon>places</InputGroupAddon>
-      </InputGroup>
-      <small id="capacity-help">Maximum tutorial group size</small>
-    </>
-  ),
+  render: function CapacityInputGroup() {
+    const [capacity, setCapacity] = useState<number | null>(null);
+    return (
+      <>
+        <label htmlFor="grouped-capacity" style={labelStyle}>
+          Capacity
+        </label>
+        <InputGroup>
+          <InputGroupAddon>#</InputGroupAddon>
+          <InputNumber
+            id="grouped-capacity"
+            value={capacity}
+            onValueChange={setCapacity}
+            aria-describedby="capacity-help"
+            showButtons
+            min={0}
+            max={5000}
+            locale="en-US"
+          />
+          <InputGroupAddon>places</InputGroupAddon>
+        </InputGroup>
+        <small id="capacity-help">Maximum tutorial group size</small>
+      </>
+    );
+  },
 };
 
 export const RightToLeft: Story = {

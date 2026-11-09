@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../test-utils';
 import { TumAetUiI18nProvider } from '../../internal/i18n';
 import { DatePicker } from './date-picker';
+import { Calendar } from './calendar';
 
 const JUNE_13 = new Date(2026, 5, 13, 8, 30);
 const day = (iso: string) => screen.getByRole('dialog').querySelector<HTMLButtonElement>(`button[data-date="${iso}"]`)!;
@@ -21,7 +22,7 @@ function Controlled({
         aria-label="Deadline"
         {...props}
         value={value}
-        onChange={(next) => {
+        onValueChange={(next) => {
           setValue(next);
           onValue?.(next);
         }}
@@ -62,24 +63,24 @@ describe('DatePicker text field', () => {
   });
 
   it('parses typed text into a Date and reports it once complete', async () => {
-    const onChange = vi.fn();
-    render(<DatePicker aria-label="Deadline" onChange={onChange} />);
+    const onValueChange = vi.fn();
+    render(<DatePicker aria-label="Deadline" onValueChange={onValueChange} />);
     await userEvent.type(field(), '13.06.2026 08:3');
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onValueChange).not.toHaveBeenCalled();
     await userEvent.type(field(), '0');
-    expect(onChange).toHaveBeenCalledOnce();
-    expect(onChange.mock.calls[0]![0]).toEqual(JUNE_13);
+    expect(onValueChange).toHaveBeenCalledOnce();
+    expect(onValueChange.mock.calls[0]![0]).toEqual(JUNE_13);
     expect(field()).toHaveValue('13.06.2026 08:30');
   });
 
   it('flags invalid text without changing the value or wiping the text', async () => {
-    const onChange = vi.fn();
+    const onValueChange = vi.fn();
     const onValidity = vi.fn();
     render(
       <DatePicker
         aria-label="Deadline"
         defaultValue={JUNE_13}
-        onChange={onChange}
+        onValueChange={onValueChange}
         onInputValidityChange={onValidity}
       />,
     );
@@ -88,7 +89,7 @@ describe('DatePicker text field', () => {
     expect(field()).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a valid date and time.');
     expect(field()).toHaveAttribute('aria-describedby', screen.getByRole('alert').id);
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onValueChange).not.toHaveBeenCalled();
     expect(onValidity).toHaveBeenLastCalledWith(false);
     await userEvent.type(field(), '{Backspace}');
     expect(screen.queryByRole('alert')).toBeNull();
@@ -98,19 +99,19 @@ describe('DatePicker text field', () => {
   it.each(['31.02.2026 10:00', '29.02.2026 10:00', '13.13.2026 10:00', '13.06.2026 24:00'])(
     'rejects the impossible entry %s',
     async (text) => {
-      const onChange = vi.fn();
-      render(<DatePicker aria-label="Deadline" onChange={onChange} />);
+      const onValueChange = vi.fn();
+      render(<DatePicker aria-label="Deadline" onValueChange={onValueChange} />);
       await userEvent.type(field(), text);
-      expect(onChange).not.toHaveBeenCalled();
+      expect(onValueChange).not.toHaveBeenCalled();
       expect(field()).toHaveAttribute('aria-invalid', 'true');
     },
   );
 
   it('accepts 29 February in a leap year', async () => {
-    const onChange = vi.fn();
-    render(<DatePicker aria-label="Deadline" onChange={onChange} />);
+    const onValueChange = vi.fn();
+    render(<DatePicker aria-label="Deadline" onValueChange={onValueChange} />);
     await userEvent.type(field(), '29.02.2028 10:00');
-    expect(onChange.mock.calls[0]![0]).toEqual(new Date(2028, 1, 29, 10, 0));
+    expect(onValueChange.mock.calls[0]![0]).toEqual(new Date(2028, 1, 29, 10, 0));
   });
 
   it('defers the error until blur with validateOnBlur but reports validity right away', async () => {
@@ -141,26 +142,26 @@ describe('DatePicker text field', () => {
   });
 
   it('accepts a non-breaking space and shows the text the way the picker writes it', () => {
-    const onChange = vi.fn();
-    render(<DatePicker aria-label="Deadline" onChange={onChange} />);
+    const onValueChange = vi.fn();
+    render(<DatePicker aria-label="Deadline" onValueChange={onValueChange} />);
     fireEvent.change(field(), { target: { value: '13.06.2026 08:30' } });
-    expect(onChange.mock.calls[0]![0]).toEqual(JUNE_13);
+    expect(onValueChange.mock.calls[0]![0]).toEqual(JUNE_13);
     expect(field()).toHaveValue('13.06.2026 08:30');
   });
 
   it('reports null when the text is emptied and clears with the clear button', async () => {
-    const onChange = vi.fn();
-    render(<Controlled onValue={onChange} />);
+    const onValueChange = vi.fn();
+    render(<Controlled onValue={onValueChange} />);
     await userEvent.clear(field());
-    expect(onChange).toHaveBeenLastCalledWith(null);
+    expect(onValueChange).toHaveBeenLastCalledWith(null);
     expect(screen.queryByRole('button', { name: 'Clear date' })).toBeNull();
   });
 
   it('clears the value and the text with the clear button and focuses the field', async () => {
-    const onChange = vi.fn();
-    render(<Controlled onValue={onChange} />);
+    const onValueChange = vi.fn();
+    render(<Controlled onValue={onValueChange} />);
     await userEvent.click(screen.getByRole('button', { name: 'Clear date' }));
-    expect(onChange).toHaveBeenCalledWith(null);
+    expect(onValueChange).toHaveBeenCalledWith(null);
     expect(field()).toHaveValue('');
     expect(field()).toHaveFocus();
   });
@@ -191,12 +192,17 @@ describe('DatePicker text field', () => {
   });
 
   it('does not reject text outside min and max, which the consumer judges', async () => {
-    const onChange = vi.fn();
+    const onValueChange = vi.fn();
     render(
-      <DatePicker aria-label="Deadline" min={new Date(2026, 5, 10)} max={new Date(2026, 5, 20)} onChange={onChange} />,
+      <DatePicker
+        aria-label="Deadline"
+        min={new Date(2026, 5, 10)}
+        max={new Date(2026, 5, 20)}
+        onValueChange={onValueChange}
+      />,
     );
     await userEvent.type(field(), '01.01.2030 10:00');
-    expect(onChange.mock.calls[0]![0]).toEqual(new Date(2030, 0, 1, 10, 0));
+    expect(onValueChange.mock.calls[0]![0]).toEqual(new Date(2030, 0, 1, 10, 0));
     expect(field()).toHaveAttribute('aria-invalid', 'false');
   });
 
@@ -228,19 +234,19 @@ describe('DatePicker dialog', () => {
   it('opens from the trigger with focus on the selected day and closes with Escape, returning focus', async () => {
     render(<DatePicker aria-label="Deadline" defaultValue={JUNE_13} />);
     const trigger = screen.getByRole('button', { name: 'Open calendar' });
-    expect(trigger).toHaveAttribute('tabindex', '-1');
+    expect(trigger).toHaveAttribute('tabindex', '0');
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     await userEvent.click(trigger);
     const dialog = screen.getByRole('dialog', { name: 'Choose date and time' });
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).not.toHaveAttribute('aria-modal', 'true');
     expect(within(dialog).getByRole('grid', { name: 'June 2026' })).toBeInTheDocument();
-    expect(day('2026-06-13')).toHaveFocus();
+    await waitFor(() => expect(day('2026-06-13')).toHaveFocus());
     expect(within(dialog).getByRole('gridcell', { selected: true })).toContainElement(day('2026-06-13'));
     expect(field()).toHaveAttribute('aria-expanded', 'true');
     expect(field()).toHaveAttribute('aria-controls', dialog.id);
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(trigger).toHaveFocus();
+    expect(field()).toHaveFocus();
   });
 
   it('returns focus to the text field when opened from it with ArrowDown', async () => {
@@ -300,18 +306,6 @@ describe('DatePicker dialog', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
-  it('wraps Tab and Shift+Tab inside the dialog', async () => {
-    render(<DatePicker aria-label="Deadline" defaultValue={JUNE_13} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Open calendar' }));
-    const done = screen.getByRole('button', { name: 'Done' });
-    const previous = screen.getByRole('button', { name: /^Previous month/ });
-    previous.focus();
-    await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
-    expect(done).toHaveFocus();
-    await userEvent.tab();
-    expect(previous).toHaveFocus();
-  });
-
   it('does not open when disabled and closes when disabled while open', async () => {
     const { rerender } = render(<DatePicker aria-label="Deadline" disabled />);
     expect(screen.getByRole('button', { name: 'Open calendar' })).toBeDisabled();
@@ -328,46 +322,77 @@ describe('DatePicker dialog', () => {
     expect(screen.getByRole('button', { name: 'Open calendar' })).toHaveAttribute('aria-expanded', 'false');
   });
 
+  it('keeps controlled value acceptance and replacement with the caller', async () => {
+    const onValueChange = vi.fn();
+    const { rerender } = render(<DatePicker aria-label="Deadline" value={JUNE_13} onValueChange={onValueChange} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Open calendar' }));
+    await userEvent.click(day('2026-06-20'));
+    expect(onValueChange).toHaveBeenLastCalledWith(new Date(2026, 5, 20, 8, 30));
+    expect(field()).toHaveValue('13.06.2026 08:30');
+    rerender(<DatePicker aria-label="Deadline" value={null} onValueChange={onValueChange} />);
+    expect(field()).toHaveValue('');
+    expect(onValueChange).toHaveBeenCalledOnce();
+  });
+
+  it('composes caller capture handlers with textbox opening', async () => {
+    const onClick = vi.fn();
+    render(
+      <DatePicker
+        aria-label="Deadline"
+        openOnClick
+        onClick={onClick}
+        onClickCapture={(event) => event.preventDefault()}
+        onKeyDownCapture={(event) => event.preventDefault()}
+      />,
+    );
+    await userEvent.click(field());
+    expect(onClick).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    field().focus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
   it('draws the field like the Angular one, without the shared input look', () => {
     render(<DatePicker aria-label="Deadline" />);
     expect(field()).not.toHaveClass('tumaet-ui-input');
   });
 
   it('selects a day and keeps the time of the value', async () => {
-    const onChange = vi.fn();
-    render(<DatePicker aria-label="Deadline" defaultValue={JUNE_13} onChange={onChange} />);
+    const onValueChange = vi.fn();
+    render(<DatePicker aria-label="Deadline" defaultValue={JUNE_13} onValueChange={onValueChange} />);
     await userEvent.click(screen.getByRole('button', { name: 'Open calendar' }));
     await userEvent.click(day('2026-06-20'));
-    expect(onChange).toHaveBeenCalledWith(new Date(2026, 5, 20, 8, 30));
+    expect(onValueChange).toHaveBeenCalledWith(new Date(2026, 5, 20, 8, 30));
     expect(field()).toHaveValue('20.06.2026 08:30');
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   it('selects midnight of the day on an empty picker and the start of the day with dateOnly', async () => {
-    const onChange = vi.fn();
-    const { unmount } = render(<DatePicker aria-label="Deadline" startAt={JUNE_13} onChange={onChange} />);
+    const onValueChange = vi.fn();
+    const { unmount } = render(<DatePicker aria-label="Deadline" startAt={JUNE_13} onValueChange={onValueChange} />);
     await userEvent.click(screen.getByRole('button', { name: 'Open calendar' }));
     await userEvent.click(day('2026-06-20'));
-    expect(onChange).toHaveBeenCalledWith(new Date(2026, 5, 20, 0, 0));
+    expect(onValueChange).toHaveBeenCalledWith(new Date(2026, 5, 20, 0, 0));
     unmount();
-    render(<DatePicker aria-label="Deadline" dateOnly defaultValue={JUNE_13} onChange={onChange} />);
+    render(<DatePicker aria-label="Deadline" dateOnly defaultValue={JUNE_13} onValueChange={onValueChange} />);
     expect(field()).toHaveValue('13.06.2026');
     await userEvent.click(screen.getByRole('button', { name: 'Open calendar' }));
     expect(screen.getByRole('dialog', { name: 'Choose date' })).toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'Time' })).toBeNull();
     await userEvent.click(day('2026-06-20'));
-    expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 5, 20, 0, 0));
+    expect(onValueChange).toHaveBeenLastCalledWith(new Date(2026, 5, 20, 0, 0));
   });
 
   it('limits the days of the calendar to min and max and ignores disabled days', async () => {
-    const onChange = vi.fn();
+    const onValueChange = vi.fn();
     render(
       <DatePicker
         aria-label="Deadline"
         defaultValue={new Date(2026, 5, 15, 8, 30)}
         min={new Date(2026, 5, 10, 18)}
         max={new Date(2026, 5, 20, 6)}
-        onChange={onChange}
+        onValueChange={onValueChange}
       />,
     );
     await userEvent.click(screen.getByRole('button', { name: 'Open calendar' }));
@@ -376,14 +401,14 @@ describe('DatePicker dialog', () => {
     expect(day('2026-06-20')).not.toHaveAttribute('aria-disabled');
     expect(day('2026-06-21')).toHaveAttribute('aria-disabled', 'true');
     await userEvent.click(day('2026-06-21'));
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onValueChange).not.toHaveBeenCalled();
     day('2026-06-20').focus();
     await userEvent.keyboard('{ArrowRight}');
     expect(day('2026-06-21')).toHaveFocus();
     await userEvent.keyboard('{Enter}');
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onValueChange).not.toHaveBeenCalled();
     await userEvent.keyboard('{ArrowLeft}{Enter}');
-    expect(onChange).toHaveBeenCalledWith(new Date(2026, 5, 20, 8, 30));
+    expect(onValueChange).toHaveBeenCalledWith(new Date(2026, 5, 20, 8, 30));
   });
 
   it('opens an empty picker on startAt, and on the month of min or max when today lies outside them', async () => {
@@ -428,6 +453,7 @@ describe('Calendar keyboard navigation', () => {
   async function openAt(value: Date) {
     render(<DatePicker aria-label="Deadline" defaultValue={value} />);
     await userEvent.click(screen.getByRole('button', { name: 'Open calendar' }));
+    await waitFor(() => expect(screen.getByRole('grid').querySelector('button[tabindex="0"]')).toHaveFocus());
   }
 
   it('moves with the arrow keys, Home and End', async () => {
@@ -450,13 +476,14 @@ describe('Calendar keyboard navigation', () => {
   });
 
   it('selects the focused day with Enter and with Space', async () => {
-    const onChange = vi.fn();
-    render(<DatePicker aria-label="Deadline" defaultValue={JUNE_13} onChange={onChange} />);
+    const onValueChange = vi.fn();
+    render(<DatePicker aria-label="Deadline" defaultValue={JUNE_13} onValueChange={onValueChange} />);
     await userEvent.click(screen.getByRole('button', { name: 'Open calendar' }));
+    await waitFor(() => expect(day('2026-06-13')).toHaveFocus());
     await userEvent.keyboard('{ArrowRight}{Enter}');
-    expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 5, 14, 8, 30));
+    expect(onValueChange).toHaveBeenLastCalledWith(new Date(2026, 5, 14, 8, 30));
     await userEvent.keyboard('{ArrowRight}[Space]');
-    expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 5, 15, 8, 30));
+    expect(onValueChange).toHaveBeenLastCalledWith(new Date(2026, 5, 15, 8, 30));
   });
 
   it('continues into the next month at the end of the grid and back into the previous one at the start', async () => {
@@ -565,32 +592,34 @@ describe('DatePicker time', () => {
   const minute = () => screen.getByRole('textbox', { name: 'Minute' });
 
   it('steps hours and minutes with wrap-around and without changing the day', async () => {
-    const onChange = vi.fn();
-    render(<DatePicker aria-label="Deadline" defaultValue={new Date(2026, 5, 13, 23, 59)} onChange={onChange} />);
+    const onValueChange = vi.fn();
+    render(
+      <DatePicker aria-label="Deadline" defaultValue={new Date(2026, 5, 13, 23, 59)} onValueChange={onValueChange} />,
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Open calendar' }));
     await userEvent.click(screen.getByRole('button', { name: 'Increment minute' }));
-    expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 23, 0));
+    expect(onValueChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 23, 0));
     await userEvent.click(screen.getByRole('button', { name: 'Increment hour' }));
-    expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 0, 0));
+    expect(onValueChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 0, 0));
     await userEvent.click(screen.getByRole('button', { name: 'Decrement hour' }));
-    expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 23, 0));
+    expect(onValueChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 23, 0));
     await userEvent.click(screen.getByRole('button', { name: 'Decrement minute' }));
-    expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 23, 59));
+    expect(onValueChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 23, 59));
     expect(field()).toHaveValue('13.06.2026 23:59');
   });
 
   it('commits typed hours and minutes on blur and on Enter, and restores invalid ones', async () => {
-    const onChange = vi.fn();
-    render(<DatePicker aria-label="Deadline" defaultValue={JUNE_13} onChange={onChange} />);
+    const onValueChange = vi.fn();
+    render(<DatePicker aria-label="Deadline" defaultValue={JUNE_13} onValueChange={onValueChange} />);
     await userEvent.click(screen.getByRole('button', { name: 'Open calendar' }));
     await userEvent.clear(hour());
     await userEvent.type(hour(), '7');
     await userEvent.tab();
-    expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 7, 30));
+    expect(onValueChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 7, 30));
     expect(hour()).toHaveValue('07');
     await userEvent.clear(minute());
     await userEvent.type(minute(), '45{Enter}');
-    expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 7, 45));
+    expect(onValueChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 7, 45));
     await userEvent.clear(hour());
     await userEvent.type(hour(), '25');
     await userEvent.tab();
@@ -602,25 +631,25 @@ describe('DatePicker time', () => {
   });
 
   it('steps from an uncommitted field value with the arrow keys', async () => {
-    const onChange = vi.fn();
-    render(<DatePicker aria-label="Deadline" defaultValue={JUNE_13} onChange={onChange} />);
+    const onValueChange = vi.fn();
+    render(<DatePicker aria-label="Deadline" defaultValue={JUNE_13} onValueChange={onValueChange} />);
     await userEvent.click(screen.getByRole('button', { name: 'Open calendar' }));
     await userEvent.clear(hour());
     await userEvent.type(hour(), '11{ArrowUp}');
-    expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 12, 30));
+    expect(onValueChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 12, 30));
     expect(hour()).toHaveValue('12');
     await userEvent.type(hour(), '{ArrowDown}{ArrowDown}');
     expect(hour()).toHaveValue('10');
   });
 
   it('leaves the fields empty until a time is set, then uses today for the date', async () => {
-    const onChange = vi.fn();
-    render(<DatePicker aria-label="Deadline" onChange={onChange} />);
+    const onValueChange = vi.fn();
+    render(<DatePicker aria-label="Deadline" onValueChange={onValueChange} />);
     await userEvent.click(screen.getByRole('button', { name: 'Open calendar' }));
     expect(hour()).toHaveValue('');
     expect(minute()).toHaveValue('');
     await userEvent.click(screen.getByRole('button', { name: 'Increment hour' }));
-    const value = onChange.mock.calls[0]![0] as Date;
+    const value = onValueChange.mock.calls[0]![0] as Date;
     const today = new Date();
     expect([value.getFullYear(), value.getMonth(), value.getDate(), value.getHours(), value.getMinutes()]).toEqual([
       today.getFullYear(),
@@ -633,29 +662,29 @@ describe('DatePicker time', () => {
   });
 
   it('can reach midnight on an empty picker by stepping down', async () => {
-    const onChange = vi.fn();
-    render(<DatePicker aria-label="Deadline" onChange={onChange} />);
+    const onValueChange = vi.fn();
+    render(<DatePicker aria-label="Deadline" onValueChange={onValueChange} />);
     await userEvent.click(screen.getByRole('button', { name: 'Open calendar' }));
     await userEvent.click(screen.getByRole('button', { name: 'Increment minute' }));
     await userEvent.click(screen.getByRole('button', { name: 'Decrement minute' }));
-    expect((onChange.mock.calls.at(-1)![0] as Date).getMinutes()).toBe(0);
+    expect((onValueChange.mock.calls.at(-1)![0] as Date).getMinutes()).toBe(0);
   });
 
   describe('timeOnly', () => {
     it('shows only the time, keeps the date of the value and opens a dialog without a calendar', () => {
-      const onChange = vi.fn();
-      render(<DatePicker aria-label="Start" timeOnly defaultValue={JUNE_13} onChange={onChange} />);
+      const onValueChange = vi.fn();
+      render(<DatePicker aria-label="Start" timeOnly defaultValue={JUNE_13} onValueChange={onValueChange} />);
       expect(field()).toHaveValue('08:30');
       fireEvent.change(field(), { target: { value: '10:15' } });
-      expect(onChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 10, 15));
+      expect(onValueChange).toHaveBeenLastCalledWith(new Date(2026, 5, 13, 10, 15));
       expect(field()).toHaveValue('10:15');
     });
 
     it('puts a time typed into an empty field on today', async () => {
-      const onChange = vi.fn();
-      render(<DatePicker aria-label="Start" timeOnly onChange={onChange} />);
+      const onValueChange = vi.fn();
+      render(<DatePicker aria-label="Start" timeOnly onValueChange={onValueChange} />);
       await userEvent.type(field(), '09:05');
-      const value = onChange.mock.calls[0]![0] as Date;
+      const value = onValueChange.mock.calls[0]![0] as Date;
       expect(value.getDate()).toBe(new Date().getDate());
       expect([value.getHours(), value.getMinutes()]).toEqual([9, 5]);
     });
@@ -681,25 +710,25 @@ describe('DatePicker time', () => {
 
   describe('inline', () => {
     it('renders the controls in place without a field, trigger or popup', async () => {
-      const onChange = vi.fn();
-      render(<DatePicker aria-label="Start" timeOnly inline defaultValue={JUNE_13} onChange={onChange} />);
+      const onValueChange = vi.fn();
+      render(<DatePicker aria-label="Start" timeOnly inline defaultValue={JUNE_13} onValueChange={onValueChange} />);
       expect(screen.queryByRole('combobox')).toBeNull();
       expect(screen.getByRole('group', { name: 'Start' })).toBeInTheDocument();
       expect(hour()).toHaveValue('08');
       await userEvent.click(screen.getByRole('button', { name: 'Increment hour' }));
       expect(hour()).toHaveValue('09');
-      expect(onChange).toHaveBeenCalledWith(new Date(2026, 5, 13, 9, 30));
+      expect(onValueChange).toHaveBeenCalledWith(new Date(2026, 5, 13, 9, 30));
     });
 
     it('shows a calendar that selects days, and marks the time fields required', async () => {
-      const onChange = vi.fn();
+      const onValueChange = vi.fn();
       const { container } = render(
-        <DatePicker aria-label="Start" inline aria-required defaultValue={JUNE_13} onChange={onChange} />,
+        <DatePicker aria-label="Start" inline aria-required defaultValue={JUNE_13} onValueChange={onValueChange} />,
       );
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(hour()).toHaveAttribute('aria-required', 'true');
       await userEvent.click(container.querySelector<HTMLElement>('button[data-date="2026-06-20"]')!);
-      expect(onChange).toHaveBeenCalledWith(new Date(2026, 5, 20, 8, 30));
+      expect(onValueChange).toHaveBeenCalledWith(new Date(2026, 5, 20, 8, 30));
       expect(screen.getByRole('grid', { name: 'June 2026' })).toBeInTheDocument();
     });
 
@@ -716,6 +745,30 @@ describe('DatePicker time', () => {
       expect(screen.getByRole('grid', { name: 'March 2027' })).toBeInTheDocument();
     });
   });
+});
+
+it('preserves native callback ref lifetimes while values and calendar months change', () => {
+  const inputCleanup = vi.fn();
+  const calendarCleanup = vi.fn();
+  const inputRef = vi.fn<(node: HTMLInputElement | null) => () => void>(() => inputCleanup);
+  const calendarRef = vi.fn<(node: HTMLDivElement | null) => () => void>(() => calendarCleanup);
+  const view = (value: Date) => (
+    <>
+      <DatePicker aria-label="Deadline" value={value} inputRef={inputRef} />
+      <Calendar activeMonth={value} selected={value} ref={calendarRef} />
+    </>
+  );
+  const { container, rerender, unmount } = render(view(JUNE_13));
+  const calendar = container.querySelector('.tumaet-ui-calendar');
+  rerender(view(new Date(2026, 6, 13)));
+  expect(field()).toHaveValue('13.07.2026 00:00');
+  expect(inputRef).toHaveBeenCalledExactlyOnceWith(field());
+  expect(calendarRef).toHaveBeenCalledExactlyOnceWith(calendar);
+  expect(inputCleanup).not.toHaveBeenCalled();
+  expect(calendarCleanup).not.toHaveBeenCalled();
+  unmount();
+  expect(inputCleanup).toHaveBeenCalledOnce();
+  expect(calendarCleanup).toHaveBeenCalledOnce();
 });
 
 describe('accessibility', () => {

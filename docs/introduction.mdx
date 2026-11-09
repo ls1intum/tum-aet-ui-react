@@ -20,7 +20,7 @@ Import the stylesheet once. Tokens, base rules and all component styles live in 
 ## Principles
 
 - **Plain CSS and tokens.** Colours, spacing, radii, shadows and type sizes come from CSS custom properties. There is no CSS-in-JS and no Tailwind.
-- **Behaviour foundation.** Current modal dialogs use `<dialog>` and popups use a built-in positioning helper. New and migrated interactive components use Base UI primitives; owned date and number formatting keeps using `Intl`.
+- **Behaviour foundation.** Native form controls use HTML/React behaviour. Migrated complex widgets delegate generic interaction to public Base UI primitives; owned date and number formatting keeps using `Intl`.
 - **Accessibility is part of the component.** See the Accessibility page.
 - **Same look as the Angular library.** If a component differs from its Angular counterpart, it is documented on its page.
 

@@ -81,11 +81,31 @@ A declaration directly on a child wins over an inherited value, even when the pa
 
 Token groups remain spacing (`--tumaet-ui-spacing`), type (`font-*`, `line-height-*`), shape (`radius-*`), elevation (`shadow-*`), brand (`primary-*`, `accent-*`, `focus-*`), text, backgrounds, borders, highlight, states (`state-{danger,success,warning,info}` and their contrast/foreground pairs), table and tooltip. The complete values are in `src/styles/themes.css`; light and dark colours are unchanged. Check contrast after customisation: 4.5:1 for normal text and 3:1 for interface parts against their backgrounds.
 
-## Scoped themes and overlays: current limitation
+## Scoped themes, direction and portals
 
-`Floating` currently portals to the nearest ancestor `dialog`, otherwise to `document.body`. A popup opened in a themed subtree can therefore inherit the destination's theme and custom tokens instead of its trigger's. The current native dialog stays in its original DOM subtree and inherits there, but a popup portalled directly into that dialog can still escape a theme nested inside it. CSS layers and aliases cannot carry inheritance across a portal.
+Portals inherit CSS tokens and DOM direction from their destination, not their trigger. Set a Portal part's `container` to a host inside the intended theme and outside clipping containers. Default body portals use the page theme. No token copying or theme synchronization is required.
 
-Until overlay integration addresses this, prefer a page-level theme for overlay-heavy screens and do not assume a scoped trigger gives its popup the same theme. The upcoming Base UI overlay integration must explicitly preserve the originating theme/custom tokens and direction through its portal container or provider, including nested overlays and dialogs. This PR adds no provider or portal behaviour.
+`DirectionProvider` exposes Base UI's direction context for keyboard behavior and logical positioning. Set matching HTML `dir` on the themed boundary or portal host as well: React direction context does not establish DOM inheritance.
+
+```tsx
+const [portalHost, setPortalHost] = useState<HTMLDivElement | null>(null);
+
+<DirectionProvider direction="rtl">
+  <section data-theme="dark" dir="rtl">
+    <div ref={setPortalHost} />
+    <Popover>
+      <PopoverTrigger>Settings</PopoverTrigger>
+      {portalHost && (
+        <PopoverPortal container={portalHost}>
+          <PopoverPositioner>
+            <PopoverPopup>Settings content</PopoverPopup>
+          </PopoverPositioner>
+        </PopoverPortal>
+      )}
+    </Popover>
+  </section>
+</DirectionProvider>;
+```
 
 ## Maintaining the CSS entry
 

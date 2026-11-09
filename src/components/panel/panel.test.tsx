@@ -1,104 +1,86 @@
-import { render, screen } from '@testing-library/react';
+import { createRef } from 'react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../test-utils';
-import { Panel } from './panel';
-
+import { Panel, PanelContent, PanelHeader, PanelTitle, PanelTrigger, type PanelProps } from './panel';
+function Example(props: PanelProps) {
+  return (
+    <Panel defaultOpen {...props}>
+      <PanelHeader>
+        <PanelTitle id="title">Details</PanelTitle>
+        <PanelTrigger />
+      </PanelHeader>
+      <PanelContent role="region" aria-labelledby="title">
+        Body <input aria-label="Draft" />
+      </PanelContent>
+    </Panel>
+  );
+}
 describe('Panel', () => {
-  it('has no toggle unless toggleable', () => {
-    render(<Panel header="Static">Body</Panel>);
-    expect(screen.queryByRole('button')).toBeNull();
-  });
-
-  it('toggles with the keyboard and keeps aria-expanded, aria-controls and inert in sync', async () => {
-    const onCollapsedChange = vi.fn();
-    render(
-      <Panel header="Details" toggleable onCollapsedChange={onCollapsedChange}>
-        Body
-      </Panel>,
-    );
-    const button = screen.getByRole('button', { name: 'Details' });
-    expect(button).toHaveAttribute('aria-expanded', 'true');
-    const region = screen.getByRole('region', { name: 'Details' });
-    expect(button).toHaveAttribute('aria-controls', region.id);
-    await userEvent.tab();
+  it('uses upstream disclosure IDs and keyboard toggling', async () => {
+    const change = vi.fn();
+    render(<Example onOpenChange={change} />);
+    const trigger = screen.getByRole('button', { name: 'Collapse' });
+    const content = screen.getByRole('region', { name: 'Details' });
+    expect(trigger).toHaveAttribute('aria-controls', content.id);
+    await userEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(change).toHaveBeenLastCalledWith(false, expect.objectContaining({ reason: 'trigger-press' }));
+    await waitFor(() => expect(screen.queryByRole('textbox')).not.toBeInTheDocument());
     await userEvent.keyboard('{Enter}');
-    expect(button).toHaveAttribute('aria-expanded', 'false');
-    expect(onCollapsedChange).toHaveBeenLastCalledWith(true);
-    expect(region).toHaveAttribute('aria-hidden', 'true');
-    expect(region).toHaveAttribute('inert');
-    await userEvent.keyboard(' ');
-    expect(button).toHaveAttribute('aria-expanded', 'true');
-    expect(region).not.toHaveAttribute('inert');
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('textbox')).toBeVisible();
   });
-
-  it('supports controlled collapsed state', async () => {
-    const { rerender } = render(
-      <Panel header="H" toggleable collapsed>
-        Body
-      </Panel>,
-    );
-    const button = screen.getByRole('button');
-    await userEvent.click(button);
-    expect(button).toHaveAttribute('aria-expanded', 'false');
-    rerender(
-      <Panel header="H" toggleable collapsed={false}>
-        Body
-      </Panel>,
-    );
-    expect(button).toHaveAttribute('aria-expanded', 'true');
-  });
-
-  it('uses translated Collapse/Expand without header and a custom label when given', async () => {
-    const { rerender } = render(<Panel toggleable>Body</Panel>);
+  it('allows cancellation without changing open state', async () => {
+    render(<Example onOpenChange={(_, details) => details.cancel()} />);
     await userEvent.click(screen.getByRole('button', { name: 'Collapse' }));
-    expect(screen.getByRole('button', { name: 'Expand' })).toBeInTheDocument();
-    rerender(
-      <Panel header={<b>X</b>} toggleable toggleLabel="Custom">
-        Body
-      </Panel>,
-    );
-    expect(screen.getByRole('button', { name: 'Custom' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toBeVisible();
+    expect(screen.getByRole('button')).toHaveAttribute('aria-expanded', 'true');
   });
-
-  it('has no accessibility violations', async () => {
+  it('keeps additional header controls independent and forwards refs/render state', async () => {
+    const trigger = createRef<HTMLButtonElement>();
+    const content = createRef<HTMLDivElement>();
+    const edit = vi.fn();
     render(
-      <main>
-        <Panel header="One" toggleable>
-          A
-        </Panel>
-        <Panel header="Two" toggleable defaultCollapsed>
-          B
-        </Panel>
-      </main>,
+      <Panel defaultOpen>
+        <PanelHeader>
+          <PanelTitle>Course</PanelTitle>
+          <button type="button" onClick={edit}>
+            Edit
+          </button>
+          <PanelTrigger
+            ref={trigger}
+            aria-label="Toggle course"
+            render={(props, state) => <button type="button" {...props} data-open-state={state.open} />}
+          />
+        </PanelHeader>
+        <PanelContent ref={content}>Course details</PanelContent>
+      </Panel>,
     );
-    await expectNoA11yViolations();
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(edit).toHaveBeenCalledOnce();
+    expect(trigger.current).toHaveAttribute('data-open-state', 'true');
+    expect(content.current).toHaveTextContent('Course details');
   });
-
-  it('treats a whitespace-only header like no header for names and the region', () => {
-    render(
-      <Panel header="   " toggleable>
-        Body
-      </Panel>,
+  it('preserves content when requested and follows controlled state', () => {
+    const view = (open: boolean) => (
+      <Panel open={open}>
+        <PanelTrigger>Toggle</PanelTrigger>
+        <PanelContent keepMounted>
+          <input aria-label="Kept" defaultValue="draft" />
+        </PanelContent>
+      </Panel>
     );
-    expect(screen.getByRole('button', { name: 'Collapse' })).toBeInTheDocument();
-    expect(screen.queryByRole('region')).toBeNull();
+    const { rerender } = render(view(true));
+    const input = screen.getByRole('textbox');
+    rerender(view(false));
+    expect(input).not.toBeVisible();
+    rerender(view(true));
+    expect(screen.getByRole('textbox')).toBe(input);
+    expect(input).toHaveValue('draft');
   });
-
-  it('prefers toggleLabel over the header and does not toggle when not toggleable', () => {
-    const onCollapsedChange = vi.fn();
-    const { rerender } = render(
-      <Panel header="Programming" toggleable toggleLabel="Programming exercises (3)">
-        Body
-      </Panel>,
-    );
-    expect(screen.getByRole('button', { name: 'Programming exercises (3)' })).not.toHaveAttribute('aria-labelledby');
-    rerender(
-      <Panel header="Static" collapsed onCollapsedChange={onCollapsedChange}>
-        Body
-      </Panel>,
-    );
-    expect(screen.queryByRole('button')).toBeNull();
-    expect(document.querySelector('.tumaet-ui-panel')).not.toHaveAttribute('data-collapsed');
-    expect(document.querySelector('.tumaet-ui-panel-content-container')).not.toHaveAttribute('inert');
+  it('has no axe violations', async () => {
+    const { container } = render(<Example />);
+    await expectNoA11yViolations(container);
   });
 });

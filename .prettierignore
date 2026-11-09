@@ -1,4 +1,4 @@
 dist
 build
-storybook-static
+/storybook-static*/
 pnpm-lock.yaml

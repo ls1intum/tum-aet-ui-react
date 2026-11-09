@@ -1,1 +1,16 @@
-export { Menu, MenuItem, type MenuItemProps, type MenuProps } from './menu';
+export {
+  Menu,
+  MenuTrigger,
+  MenuPortal,
+  MenuPositioner,
+  MenuPopup,
+  MenuItem,
+  MenuLinkItem,
+  type MenuProps,
+  type MenuTriggerProps,
+  type MenuPortalProps,
+  type MenuPositionerProps,
+  type MenuPopupProps,
+  type MenuItemProps,
+  type MenuLinkItemProps,
+} from './menu';
