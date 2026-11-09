@@ -32,7 +32,7 @@ Set `data-theme="dark"` or `.dark` on `<html>` for the dark theme; `.light` or `
 
 ## Components
 
-Button, ButtonGroup, Input, Textarea, FormField, IconField, InputGroup, InputNumber, SearchField, Checkbox, RadioButton, RadioGroup, ToggleSwitch, SelectButton, Select, MultiSelect, Autocomplete, DatePicker, Calendar, Dialog, ConfirmDialog (`useConfirm`), Popover, Tooltip, Menu, DataTable, Table, SortableColumnHeader, Paginator, Tabs, List, Tag, Chip, Message, ProgressBar, ProgressSpinner, EmptyState, Card, Panel, Splitter.
+Button, ButtonGroup, Input, Textarea, Field, FormField, IconField, InputGroup, InputNumber, SearchField, Checkbox, RadioButton, RadioGroup, ToggleSwitch, SelectButton, Select, Combobox, DatePicker, Calendar, Dialog, ConfirmDialog (`useConfirm`), Popover, Tooltip, Menu, DataTable, Table, SortableColumnHeader, Paginator, Tabs, List, Tag, Chip, Message, ProgressBar, ProgressSpinner, EmptyState, Card, Panel, Splitter. Interactive compositions expose flat parts; `DirectionProvider` supplies Base UI's direction context.
 
 Not ported: charts, the virtual-scroll table and the Angular `DialogService`.
 

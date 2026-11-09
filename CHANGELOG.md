@@ -10,6 +10,7 @@ All notable changes to `@tumaet/ui-react`. The version numbers are independent o
 - Compose Menu and Tooltip from their root, trigger, portal, positioner and popup parts. Replace Tooltip's `content` and `describesHost` props with popup children and explicit `id`/`aria-describedby` associations when a description adds useful information. Trigger labels remain independent of hints.
 - Replace Select's `options`, property-name paths, `filter`, `onChange` and `defaultValue` API with typed keyed `items`, required controlled `value`, and `onValueChange`. Single empty selection is `null`; multiple empty selection is `[]`. Use `itemToStringLabel`, `itemToStringValue` and `isItemEqualToValue` for display, native submission and object equality. The caller owns selection and form-reset policy.
 - Rename confirmation `header` to `title`. Confirmation promises settle on decisions, replacement or provider unmount; callback failures reject their request's promise.
+- Replace Autocomplete and MultiSelect with a typed, compound Combobox for single or multiple searchable selection. Keep query text separate from controlled selected values; server filtering uses `filter={null}` and `filteredItems` without dropping selected descriptors. List items and chips use stable keys. The legacy listbox interaction helpers are removed.
 
 ```tsx
 <Select items={courses} value={course} onValueChange={setCourse}>

@@ -50,7 +50,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Typed root-owned items are rendered by SelectList. Single selection uses null for empty; multiple selection uses []. Selection is controlled: provide value and update it in onValueChange. Changes can be canceled using details.cancel(). Object values support isItemEqualToValue, itemToStringLabel (display/typeahead) and itemToStringValue (submission); serialized values must be unique and nonempty. Field is presentation: connect native labels and descriptions using explicit IDs, and supply aria-invalid on the trigger when validation fails. Native required participates in form validity. Each item needs a unique stable key, independent of equality, display and serialized submission values. Native form reset leaves the controlled selection unchanged. To reset it, update caller state in the form onReset handler; use React DOM flushSync there when subsequent synchronous FormData must observe that update. Respect event.defaultPrevented before applying that policy. Use Autocomplete for searchable suggestions. Arbitrary SelectItem or SelectValue render-function descendants are independently typed; their types cannot be inferred from the root.',
+          'Controlled selection from typed, keyed items. Single selection uses null for empty; multiple selection uses []. Use itemToStringLabel, itemToStringValue and isItemEqualToValue for object values. The caller owns selection and reset policy. Use Combobox for searchable selection.',
       },
     },
   },

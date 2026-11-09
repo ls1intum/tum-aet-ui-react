@@ -3,11 +3,11 @@
 
 @import url('./themes.css') layer(tumaet-ui.tokens);
 @import url('./base.css') layer(tumaet-ui.base);
-@import url('../components/autocomplete/autocomplete.css') layer(tumaet-ui.components);
 @import url('../components/button/button.css') layer(tumaet-ui.components);
 @import url('../components/card/card.css') layer(tumaet-ui.components);
 @import url('../components/checkbox/checkbox.css') layer(tumaet-ui.components);
 @import url('../components/chip/chip.css') layer(tumaet-ui.components);
+@import url('../components/combobox/combobox.css') layer(tumaet-ui.components);
 @import url('../components/confirm-dialog/confirm-dialog.css') layer(tumaet-ui.components);
 @import url('../components/date-picker/date-picker.css') layer(tumaet-ui.components);
 @import url('../components/dialog/dialog.css') layer(tumaet-ui.components);
@@ -20,7 +20,6 @@
 @import url('../components/list/list.css') layer(tumaet-ui.components);
 @import url('../components/menu/menu.css') layer(tumaet-ui.components);
 @import url('../components/message/message.css') layer(tumaet-ui.components);
-@import url('../components/multi-select/multi-select.css') layer(tumaet-ui.components);
 @import url('../components/paginator/paginator.css') layer(tumaet-ui.components);
 @import url('../components/panel/panel.css') layer(tumaet-ui.components);
 @import url('../components/popover/popover.css') layer(tumaet-ui.components);
