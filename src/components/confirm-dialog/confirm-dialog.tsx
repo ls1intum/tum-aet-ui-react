@@ -1,11 +1,13 @@
-import { createContext, useCallback, useContext, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, type ButtonSeverity } from '../button';
-import { Dialog } from '../dialog';
+import { AlertDialog } from '@base-ui/react/alert-dialog';
+import { useTranslate } from '../../internal/i18n';
+import { XIcon } from '../../internal/icons';
 
 /** Content and callbacks for one confirmation decision. */
 export interface ConfirmationRequest {
   /** Dialog title. */
-  header: string;
+  title: string;
   /** Body text shown next to the optional icon. */
   message: ReactNode;
   /** Localized confirm-button label. */
@@ -20,10 +22,10 @@ export interface ConfirmationRequest {
   icon?: ReactNode;
   /** Routes the request to the `ConfirmDialog` with the same `key`. */
   key?: string;
-  /** Invoked when the user confirms. */
-  accept?: () => void;
-  /** Invoked when the user cancels or dismisses the dialog. */
-  reject?: () => void;
+  /** Invoked on confirmation. Awaited before resolution; errors reject the request promise. */
+  accept?: () => void | Promise<void>;
+  /** Invoked on cancellation, dismissal, replacement or provider unmount. Errors reject the request promise. */
+  reject?: () => void | Promise<void>;
 }
 
 export type ConfirmFunction = (request: ConfirmationRequest) => Promise<boolean>;
@@ -36,8 +38,8 @@ interface Entry {
 interface ConfirmContextValue {
   entries: ReadonlyMap<string | undefined, Entry>;
   confirm: ConfirmFunction;
-  /** Settles and removes the pending request for `key`. */
-  settle: (key: string | undefined, accepted: boolean) => void;
+  /** Bind decisions to the rendered entry; callbacks may replace it before settlement. */
+  settle: (key: string | undefined, accepted: boolean, expected: Entry | undefined) => void;
 }
 
 const ConfirmContext = createContext<ConfirmContextValue | null>(null);
@@ -52,6 +54,22 @@ function useConfirmContext(): ConfirmContextValue {
 export function ConfirmProvider({ children }: { children?: ReactNode }) {
   const [entries, setEntries] = useState<ReadonlyMap<string | undefined, Entry>>(new Map());
   const latest = useRef(entries);
+  const owner = useRef({ active: true });
+
+  useEffect(() => {
+    const lifetime = { active: true };
+    owner.current = lifetime;
+    return () => {
+      // Strict Mode reconnects effects synchronously. Dispose only if this owner stays unmounted.
+      queueMicrotask(() => {
+        if (owner.current !== lifetime) return;
+        lifetime.active = false;
+        const pending = latest.current;
+        latest.current = new Map();
+        for (const entry of pending.values()) entry.settle(false);
+      });
+    };
+  }, []);
 
   const commit = useCallback((next: ReadonlyMap<string | undefined, Entry>) => {
     latest.current = next;
@@ -59,41 +77,47 @@ export function ConfirmProvider({ children }: { children?: ReactNode }) {
   }, []);
 
   const settle = useCallback(
-    (key: string | undefined, accepted: boolean) => {
+    (key: string | undefined, accepted: boolean, expected: Entry | undefined) => {
       const entry = latest.current.get(key);
-      if (!entry) return;
+      if (!entry || entry !== expected) return;
       const next = new Map(latest.current);
       next.delete(key);
       commit(next);
-      // Cleared first so the dialog is already closing while the callbacks run.
+      // Reentrant confirmation callbacks must see the updated queue.
       entry.settle(accepted);
     },
     [commit],
   );
 
   const confirm = useCallback<ConfirmFunction>(
-    async (request) =>
-      new Promise<boolean>((resolve) => {
-        // A second request for the same key replaces the pending one, which counts as rejected.
-        settle(request.key, false);
+    async (request) => {
+      if (!owner.current.active) return false;
+      return new Promise<boolean>((resolve, reject) => {
+        const previous = latest.current.get(request.key);
         const entry: Entry = {
           request,
           settle: (accepted) => {
-            if (accepted) request.accept?.();
-            else request.reject?.();
-            resolve(accepted);
+            // Callback failures reject this request's promise without blocking replacement or cleanup.
+            try {
+              const result = accepted ? request.accept?.() : request.reject?.();
+              Promise.resolve(result).then(() => resolve(accepted), reject);
+            } catch (error) {
+              reject(error instanceof Error ? error : new Error('Confirmation callback failed', { cause: error }));
+            }
           },
         };
         commit(new Map(latest.current).set(request.key, entry));
-      }),
-    [commit, settle],
+        previous?.settle(false);
+      });
+    },
+    [commit],
   );
 
   const value = useMemo(() => ({ entries, confirm, settle }), [entries, confirm, settle]);
   return <ConfirmContext value={value}>{children}</ConfirmContext>;
 }
 
-/** Returns `confirm(request)`, which resolves to `true` when accepted and `false` when rejected or dismissed. */
+/** Resolves to the decision, or false on provider unmount/replacement. Callback errors reject the promise. */
 export function useConfirm(): ConfirmFunction {
   return useConfirmContext().confirm;
 }
@@ -101,45 +125,67 @@ export function useConfirm(): ConfirmFunction {
 export interface ConfirmDialogProps {
   /** Static key used to select this dialog's confirmation requests. */
   confirmKey?: string;
+  container?: AlertDialog.Portal.Props['container'];
+  /** Cancel an upstream dismissal before the pending confirmation is rejected. */
+  onOpenChange?: AlertDialog.Root.Props['onOpenChange'];
 }
 
-/** Renders requests from the nearest `ConfirmProvider` as a modal decision (`role="alertdialog"`). */
-export function ConfirmDialog({ confirmKey }: ConfirmDialogProps) {
+/** Modal alert-dialog composition. Backdrop presses never settle a decision. */
+export function ConfirmDialog({ confirmKey, container, onOpenChange }: ConfirmDialogProps) {
   const { entries, settle } = useConfirmContext();
-  const messageId = useId();
-  const request = entries.get(confirmKey)?.request;
-  if (!request) return null;
-  // Keeps the falsy semantics of ReactNode (`''`, `0`, `false` render no icon wrapper).
-  const hasIcon = Boolean(request.icon);
+  const t = useTranslate();
+  const rejectButton = useRef<HTMLButtonElement>(null);
+  const entry = entries.get(confirmKey);
+  const request = entry?.request;
   return (
-    <Dialog
-      open
-      closable
-      role="alertdialog"
-      header={request.header}
-      aria-describedby={messageId}
-      onOpenChange={(open) => !open && settle(confirmKey, false)}
-      footer={
-        <>
-          <Button severity={request.rejectSeverity ?? 'secondary'} onClick={() => settle(confirmKey, false)}>
-            {request.rejectLabel}
-          </Button>
-          <Button severity={request.acceptSeverity ?? 'primary'} onClick={() => settle(confirmKey, true)}>
-            {request.acceptLabel}
-          </Button>
-        </>
-      }
+    <AlertDialog.Root
+      open={request !== undefined}
+      onOpenChange={(open, details) => {
+        onOpenChange?.(open, details);
+        if (!open && !details.isCanceled) settle(confirmKey, false, entry);
+      }}
     >
-      <div className="tumaet-ui-confirm-dialog-body">
-        {hasIcon ? (
-          <span className="tumaet-ui-confirm-dialog-icon" aria-hidden="true">
-            {request.icon}
-          </span>
-        ) : null}
-        <span id={messageId} className="tumaet-ui-confirm-dialog-message">
-          {request.message}
-        </span>
-      </div>
-    </Dialog>
+      {request !== undefined ? (
+        <AlertDialog.Portal container={container} className="tumaet-ui-dialog-portal">
+          <AlertDialog.Backdrop className="tumaet-ui-dialog-backdrop" />
+          <AlertDialog.Popup className="tumaet-ui-dialog" initialFocus={rejectButton}>
+            <div className="tumaet-ui-dialog-header">
+              <AlertDialog.Title className="tumaet-ui-dialog-title">{request.title}</AlertDialog.Title>
+              <AlertDialog.Close
+                data-icon-only
+                className="tumaet-ui-dialog-close"
+                aria-label={t('tumAetUi.dialog.close')}
+              >
+                <XIcon />
+              </AlertDialog.Close>
+            </div>
+            <div className="tumaet-ui-dialog-content">
+              <div className="tumaet-ui-confirm-dialog-body">
+                {Boolean(request.icon) && (
+                  <span className="tumaet-ui-confirm-dialog-icon" aria-hidden="true">
+                    {request.icon}
+                  </span>
+                )}
+                <AlertDialog.Description render={<span />} className="tumaet-ui-confirm-dialog-message">
+                  {request.message}
+                </AlertDialog.Description>
+              </div>
+            </div>
+            <div className="tumaet-ui-dialog-footer">
+              <Button
+                ref={rejectButton}
+                severity={request.rejectSeverity ?? 'secondary'}
+                onClick={() => settle(confirmKey, false, entry)}
+              >
+                {request.rejectLabel}
+              </Button>
+              <Button severity={request.acceptSeverity ?? 'primary'} onClick={() => settle(confirmKey, true, entry)}>
+                {request.acceptLabel}
+              </Button>
+            </div>
+          </AlertDialog.Popup>
+        </AlertDialog.Portal>
+      ) : null}
+    </AlertDialog.Root>
   );
 }

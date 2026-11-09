@@ -1,25 +1,32 @@
 import { Button } from '../button';
-import { Popover } from './popover';
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverPortal,
+  PopoverPositioner,
+  PopoverPopup,
+  PopoverTitle,
+  PopoverDescription,
+  PopoverClose,
+} from './popover';
 
 export default function PopoverDemo() {
   return (
     <div style={{ display: 'flex', gap: 12, padding: 80, flexWrap: 'wrap' }}>
-      {(['top', 'bottom', 'left', 'right'] as const).map((placement) => (
-        <Popover
-          key={placement}
-          placement={placement}
-          aria-label={`Details (${placement})`}
-          trigger={<Button variant="outlined">{placement}</Button>}
-        >
-          <p style={{ margin: 0 }}>Rich content with an action.</p>
-          <Button size="small" style={{ marginTop: 8 }}>
-            Do it
-          </Button>
+      {(['top', 'bottom', 'left', 'right'] as const).map((side) => (
+        <Popover key={side}>
+          <PopoverTrigger render={<Button variant="outlined" />}>{side}</PopoverTrigger>
+          <PopoverPortal>
+            <PopoverPositioner side={side} sideOffset={8}>
+              <PopoverPopup>
+                <PopoverTitle>Details ({side})</PopoverTitle>
+                <PopoverDescription>Rich content with an action.</PopoverDescription>
+                <PopoverClose render={<Button size="small" />}>Done</PopoverClose>
+              </PopoverPopup>
+            </PopoverPositioner>
+          </PopoverPortal>
         </Popover>
       ))}
-      <Popover padding="none" aria-label="Unpadded" trigger={<Button variant="text">No padding</Button>}>
-        <div style={{ padding: 8 }}>Content without panel padding</div>
-      </Popover>
     </div>
   );
 }

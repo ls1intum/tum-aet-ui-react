@@ -6,6 +6,25 @@ All notable changes to `@tumaet/ui-react`. The version numbers are independent o
 
 - Layer tokens, base rules and components under `tumaet-ui`. Declare application layer order before stylesheet imports; replace references to `tumaet-ui-theme`. Theme aliases and nested scopes follow the [theming contract](docs/theming.mdx).
 - Ship modular ESM and validate the packed artifact with fresh consumers. React and React DOM remain peers; Base UI is a runtime dependency.
+- Compose Dialog and Popover from flat Root, Trigger, Portal and Popup parts, with Backdrop or Positioner as appropriate. Base UI owns their interaction; trigger handles preserve typed payloads. Dialog refs now target the rendered Base UI part rather than an `HTMLDialogElement`.
+- Replace Select's `options`, property-name paths, `filter`, `onChange` and `defaultValue` API with typed keyed `items`, required controlled `value`, and `onValueChange`. Single empty selection is `null`; multiple empty selection is `[]`. Use `itemToStringLabel`, `itemToStringValue` and `isItemEqualToValue` for display, native submission and object equality. The caller owns selection and form-reset policy.
+- Rename confirmation `header` to `title`. Confirmation promises settle on decisions, replacement or provider unmount; callback failures reject their request's promise.
+
+```tsx
+<Select items={courses} value={course} onValueChange={setCourse}>
+  <SelectTrigger>
+    <SelectValue placeholder="Choose a course" />
+  </SelectTrigger>
+  <SelectPortal>
+    <SelectPositioner>
+      <SelectPopup>
+        <SelectList />
+      </SelectPopup>
+    </SelectPositioner>
+  </SelectPortal>
+</Select>
+```
+
 - Use native inputs for Checkbox, RadioButton and ToggleSwitch. Replace boolean callbacks with native `onChange` events for Checkbox/ToggleSwitch; refs target the actual inputs. `className`/`style` target the visual wrapper; other props/events target the input. Selection, submission and uncontrolled reset follow HTML/React.
 - RadioGroup requires an explicit `name`, renders a fieldset and distributes `value/defaultValue`, form and constraints to native radios. `onValueChange(value, event)` receives a scalar and React input change event; option refs target inputs. It stores no uncontrolled selection. Values use strict equality and native string serialization; independently typed JSX children must use values from the intended root union. Controlled selection/reset remain caller-owned; changing uncontrolled defaults updates native reset defaults.
 

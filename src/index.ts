@@ -31,6 +31,7 @@ export * from './components/tabs';
 export * from './components/tag';
 export * from './components/toggle-switch';
 export * from './components/tooltip';
+export { DirectionProvider, type DirectionProviderProps } from '@base-ui/react/direction-provider';
 export {
   TumAetUiI18nProvider,
   useTranslate,
