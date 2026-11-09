@@ -78,13 +78,15 @@ for (const direction of ['ltr', 'rtl'] as const) {
     await expect.element(string).toHaveFocus();
     await expect.element(number).toHaveAttribute('aria-selected', 'true');
     await userEvent.keyboard('{Enter}');
-    await expect.element(page.getByRole('tabpanel')).toHaveTextContent('String content');
+    const stringPanel = page.getByRole('tabpanel', { name: 'String', exact: true });
+    await expect.element(stringPanel).toHaveTextContent('String content');
     await userEvent.keyboard('{End}');
     await expect.element(page.getByRole('tab', { name: 'Unavailable' })).toHaveFocus();
     await expect.element(string).toHaveAttribute('aria-selected', 'true');
     await userEvent.keyboard('{Home} ');
     await expect.element(page.getByRole('textbox', { name: 'Draft' })).toHaveValue('unsaved');
-    const panel = page.getByRole('tabpanel').element();
+    await expect.element(stringPanel).not.toBeInTheDocument();
+    const panel = page.getByRole('tabpanel', { name: 'Number', exact: true }).element();
     expect(number.element()).toHaveAttribute('aria-controls', panel.id);
     unmount();
   });
