@@ -11,8 +11,6 @@ import {
   DialogPopup,
   DialogTitle,
   DialogClose,
-} from '../../src/components/dialog';
-import {
   Combobox,
   ComboboxInputGroup,
   ComboboxInput,
@@ -24,7 +22,7 @@ import {
   ComboboxList,
   ComboboxChips,
   type ComboboxProps,
-} from '../../src/components/combobox';
+} from '@tumaet/ui-react';
 
 const items = ['Alpha', 'Beta', 'Gamma'].map((value) => ({
   key: value,
@@ -56,7 +54,7 @@ function Parts({
       <ComboboxPortal container={container}>
         <ComboboxPositioner>
           <ComboboxPopup>
-            <ComboboxList />
+            <ComboboxList aria-label={label} />
           </ComboboxPopup>
         </ComboboxPositioner>
       </ComboboxPortal>

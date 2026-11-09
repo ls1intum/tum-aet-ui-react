@@ -3,12 +3,24 @@ import { render } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { DirectionProvider } from '@base-ui/react/direction-provider';
-import { Tabs, TabList, Tab, TabIndicator, TabPanels, TabPanel } from '../../src/components/tabs';
-import { InputNumber } from '../../src/components/input-number';
-import { Panel, PanelHeader, PanelTitle, PanelTrigger, PanelContent } from '../../src/components/panel';
-import { SelectButton } from '../../src/components/select-button';
-import { FormField } from '../../src/components/form-field';
-import { InputGroup, InputGroupAddon } from '../../src/components/input-group';
+import {
+  Tabs,
+  TabList,
+  Tab,
+  TabIndicator,
+  TabPanels,
+  TabPanel,
+  InputNumber,
+  Panel,
+  PanelHeader,
+  PanelTitle,
+  PanelTrigger,
+  PanelContent,
+  SelectButton,
+  FormField,
+  InputGroup,
+  InputGroupAddon,
+} from '@tumaet/ui-react';
 
 function requireForm(container: HTMLElement) {
   const form = container.querySelector('form');

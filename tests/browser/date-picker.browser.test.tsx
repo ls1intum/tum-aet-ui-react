@@ -2,15 +2,16 @@ import { createRef, useRef, useState } from 'react';
 import { act, render } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { DatePicker, type DatePickerProps } from '../../src/components/date-picker';
 import {
+  DatePicker,
+  type DatePickerProps,
   Dialog,
   DialogTrigger,
   DialogPortal,
   DialogPopup,
   DialogTitle,
   DialogClose,
-} from '../../src/components/dialog';
+} from '@tumaet/ui-react';
 
 const initial = new Date(2026, 5, 13, 8, 30);
 const input = () => page.getByRole('combobox', { name: 'Deadline' });

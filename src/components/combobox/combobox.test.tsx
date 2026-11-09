@@ -33,7 +33,7 @@ function Parts({ multiple = false, ...props }: ComboboxInputProps & { multiple?:
       <ComboboxPortal>
         <ComboboxPositioner>
           <ComboboxPopup>
-            <ComboboxList />
+            <ComboboxList aria-label="Choices" />
           </ComboboxPopup>
         </ComboboxPositioner>
       </ComboboxPortal>
@@ -211,7 +211,7 @@ describe('Combobox', () => {
         <ComboboxPortal>
           <ComboboxPositioner>
             <ComboboxPopup>
-              <ComboboxList />
+              <ComboboxList aria-label="Choices" />
             </ComboboxPopup>
           </ComboboxPositioner>
         </ComboboxPortal>

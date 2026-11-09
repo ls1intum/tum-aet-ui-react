@@ -8,23 +8,24 @@ Accessible composition requires labels, keyboard behavior and focus handling as 
 
 ## What the components do
 
-- Keyboard operation for every interactive part: arrow keys in listboxes, menus, tabs, radio groups and calendars, `Escape` closes popups, `Enter` and `Space` activate.
-- Modal dialogs wrap `Tab` and `Shift+Tab` within the popup and return focus to the trigger when closed. Popups return focus to their trigger.
-- Visible focus rings (`:focus-visible`) with a colour that has enough contrast in both themes.
-- Messages use `role="alert"` for errors and `role="status"` otherwise. Table result counts and paginator summaries are announced.
+- Keyboard operation follows each widget's pattern: arrow keys navigate selections and calendars, `Escape` dismisses popups, and buttons support native activation.
+- Modal dialogs wrap `Tab` and `Shift+Tab` within the popup. Escape dismissal returns focus to the trigger or the configured `finalFocus` target. Nonmodal popups let keyboard focus leave; outside interaction preserves the destination focus.
+- Token-based `:focus-visible` styles identify the focused control in both themes.
+- Messages default to `role="alert"` for errors and `role="status"` otherwise. Table result counts and paginator summaries use live regions.
 - Animations respect `prefers-reduced-motion`.
-- Component tests include axe-core checks. The Storybook a11y addon reports violations when stories run; building Storybook alone does not execute those checks.
+- Component tests include axe-core checks. `pnpm test:storybook` runs example interactions and axe checks in light and dark themes. Building Storybook alone does not execute those checks.
 
 ## What you have to do
 
 - Give every control an accessible name: a visible label or an `aria-label`. With `FormField`, spread the render-function props onto the labelable control. With flat `Field` parts, connect labels and descriptions explicitly. Icon-only buttons need an accessible name.
 - Put one meaningful heading structure and landmarks on your pages; the components do not add them.
-- Keep contrast when you override tokens (4.5:1 for text, 3:1 for interface parts).
-- Do not rely on colour alone to show state. Components add icons or text for severities; keep that when you wrap them.
-- Coordinate application-driven focus with open popups using their `initialFocus` and `finalFocus` props. Keyboard containment does not prevent explicit `.focus()` calls on background elements.
+- Keep contrast when you override tokens (4.5:1 for normal text, 3:1 for interface parts).
+- Convey status with meaningful text or icons as well as colour.
+- Choose `initialFocus` and `finalFocus` targets when the task calls for them, and coordinate application-driven focus changes with open popups. Keyboard containment does not prevent explicit `.focus()` calls on background elements.
 - Test with a keyboard and a screen reader. Automated checks find only part of the problems.
 
-## Known limits
+## Automated coverage
 
-- Right-to-left layouts and touch input have not been verified yet.
-- The tooltip is not shown on touch-only devices; do not put essential information in it.
+The browser suite includes right-to-left keyboard navigation, logical-edge styling and scoped-portal direction cases. These checks cover representative compositions, not every application layout or locale. Set both `DirectionProvider` and matching HTML `dir`; see the Theming guide.
+
+Automated tests do not establish screen-reader speech or touch usability. Test those with the application content and target devices. Keep essential information available without opening a tooltip.

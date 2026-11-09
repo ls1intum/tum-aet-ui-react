@@ -17,7 +17,7 @@ export default function ButtonDemo() {
           ))}
         </div>
       ))}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
         <Button size="small">Small</Button>
         <Button>Default</Button>
         <Button size="large">Large</Button>

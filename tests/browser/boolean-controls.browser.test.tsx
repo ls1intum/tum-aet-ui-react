@@ -2,7 +2,7 @@ import { createRef, memo, useRef, useState } from 'react';
 import { act, render } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { Checkbox, RadioButton, RadioGroup, ToggleSwitch } from '../../src';
+import { Checkbox, RadioButton, RadioGroup, ToggleSwitch } from '@tumaet/ui-react';
 
 function requireForm(container: HTMLElement, id?: string): HTMLFormElement {
   const form = container.querySelector<HTMLFormElement>(id === undefined ? 'form' : `#${id}`);

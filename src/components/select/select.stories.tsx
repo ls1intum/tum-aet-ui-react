@@ -1,7 +1,6 @@
 import { useId, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, screen } from 'storybook/test';
-import { useArgs } from 'storybook/preview-api';
+import { expect, screen, waitFor } from 'storybook/test';
 import { Select, SelectTrigger, SelectValue, SelectPortal, SelectPositioner, SelectPopup, SelectList } from './select';
 import { Field, FieldLabel, FieldDescription } from '../form-field';
 
@@ -20,7 +19,7 @@ function Example(props: React.ComponentProps<typeof Select<string>>) {
         <SelectPortal>
           <SelectPositioner>
             <SelectPopup>
-              <SelectList />
+              <SelectList aria-labelledby={`${id}-label`} />
             </SelectPopup>
           </SelectPositioner>
         </SelectPortal>
@@ -34,18 +33,19 @@ const meta = {
   component: Select<string>,
   args: { items: languages, value: null },
   render: function Render(args) {
-    const [{ value }, updateArgs] = useArgs<React.ComponentProps<typeof Select<string>>>();
+    const [value, setValue] = useState(args.value);
     return (
       <Example
         {...args}
         value={value}
         onValueChange={(next, details) => {
           args.onValueChange?.(next, details);
-          if (!details.isCanceled) updateArgs({ value: next });
+          if (!details.isCanceled) setValue(next);
         }}
       />
     );
   },
+  argTypes: { value: { control: false } },
   parameters: {
     docs: {
       description: {
@@ -58,12 +58,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
+export const Opened: Story = { args: { defaultOpen: true } };
 export const Selected: Story = {
   play: async ({ canvas, userEvent }) => {
     const trigger = canvas.getByRole('combobox', { name: 'Course language' });
     await userEvent.click(trigger);
     await userEvent.click(await screen.findByRole('option', { name: 'German' }));
-    await expect(trigger).toHaveTextContent('German');
+    await waitFor(async () => expect(trigger).toHaveTextContent('German'));
+    await waitFor(async () => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
   },
 };
 export const Empty: Story = { args: { items: [] } };
@@ -85,7 +87,7 @@ export const Multiple: Story = {
           <SelectPortal>
             <SelectPositioner>
               <SelectPopup>
-                <SelectList />
+                <SelectList aria-labelledby={`${id}-label`} />
               </SelectPopup>
             </SelectPositioner>
           </SelectPortal>
@@ -122,7 +124,7 @@ export const ObjectValues: Story = {
           <SelectPortal>
             <SelectPositioner>
               <SelectPopup>
-                <SelectList />
+                <SelectList aria-labelledby={`${id}-label`} />
               </SelectPopup>
             </SelectPositioner>
           </SelectPortal>
@@ -151,7 +153,7 @@ function SizeExample({ size }: { size: 'small' | 'default' | 'large' }) {
       <SelectPortal>
         <SelectPositioner>
           <SelectPopup>
-            <SelectList />
+            <SelectList aria-label={`${size} language choices`} />
           </SelectPopup>
         </SelectPositioner>
       </SelectPortal>

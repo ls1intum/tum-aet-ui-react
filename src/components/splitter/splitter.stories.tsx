@@ -75,6 +75,22 @@ export const CollapsedSecondPanel: Story = { args: { collapsedSecondSize: '3rem'
 
 export const CustomGutter: Story = { args: { gutterSize: 16 } };
 
+export const RightToLeft: Story = {
+  decorators: [
+    (Story) => (
+      <div dir="rtl" style={{ height: '100%' }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const separator = within(canvasElement).getByRole('separator');
+    separator.focus();
+    await userEvent.keyboard('{ArrowLeft}');
+    await expect(separator).toHaveAttribute('aria-valuenow', '62');
+  },
+};
+
 export const PersistedSize: Story = {
   args: { stateKey: 'storybook-splitter' },
 };

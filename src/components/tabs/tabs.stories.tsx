@@ -44,9 +44,11 @@ export const KeyboardNavigation: Story = {
     await userEvent.click(canvas.getByRole('tab', { name: 'Overview' }));
     await userEvent.keyboard('{End}');
     await expect(canvas.getByRole('tab', { name: 'Settings' })).toHaveFocus();
-    await expect(canvas.getByRole('tabpanel')).toHaveTextContent('Course overview');
+    const overview = canvas.getByRole('tabpanel', { name: 'Overview' });
+    await expect(overview).toHaveTextContent('Course overview');
     await userEvent.keyboard('{Enter}');
-    await expect(canvas.getByRole('tabpanel')).toHaveTextContent('Course settings');
+    await expect(await canvas.findByRole('tabpanel', { name: 'Settings' })).toHaveTextContent('Course settings');
+    await waitFor(async () => expect(overview).not.toBeInTheDocument());
   },
 };
 

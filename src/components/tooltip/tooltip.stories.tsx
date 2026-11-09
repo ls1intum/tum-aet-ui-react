@@ -116,7 +116,11 @@ export const DisabledControl: Story = {
 function ScopedTooltip() {
   const portalHost = useRef<HTMLDivElement>(null);
   return (
-    <div data-theme="dark" className="tumaet-ui-root" style={{ padding: 24 }}>
+    <div
+      data-theme="dark"
+      className="tumaet-ui-root"
+      style={{ padding: 24, background: 'var(--tumaet-ui-content-background)', color: 'var(--tumaet-ui-text-color)' }}
+    >
       <Tooltip>
         <TooltipTrigger render={<Button variant="outlined" />}>Scoped dark hint</TooltipTrigger>
         <TooltipPortal container={portalHost}>

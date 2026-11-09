@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 
 export const DEFAULT_TRANSLATIONS = {
   'tumAetUi.autocomplete.empty': 'No results found',
@@ -80,10 +80,9 @@ export function TumAetUiI18nProvider({
   return <TranslatorContext value={value}>{children}</TranslatorContext>;
 }
 
-/** Returns a stable-per-render translate function for built-in component texts (labels, aria texts). */
+/** Returns the translator for component text. */
 export function useTranslate(): Translator {
-  const { translate } = useContext(TranslatorContext);
-  return useCallback<Translator>((key, params) => translate(key, params), [translate]);
+  return useContext(TranslatorContext).translate;
 }
 
 /** Locale for locale-sensitive browser formatting (dates, numbers). `undefined` means the browser default. */

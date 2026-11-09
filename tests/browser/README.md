@@ -1,6 +1,6 @@
 # Browser interaction tests
 
-Run the jsdom suite with `pnpm test`. Native browser interactions use a separate Vitest configuration. `test:browser` builds the package first, and browser setup loads the emitted `dist/styles.css`:
+Run the jsdom suite with `pnpm test`. Native browser interactions use a separate Vitest configuration. `test:browser` builds the package first, and browser fixtures import the built public entry and setup loads `dist/styles.css`:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -27,6 +27,10 @@ Restore the recorded value afterwards, or delete the override with `defaults del
 [Vitest Browser Mode](https://vitest.dev/guide/browser/) uses its [Playwright provider](https://vitest.dev/config/browser/playwright) and the existing Testing Library React renderer. Keep Vitest and its browser provider versions aligned; the provider declares an exact Vitest peer.
 
 Fixtures stay outside `src` and published output. Setup preserves native dialog, focus, layout and scroll APIs and cleans up React after each test. Use native interactions and observable roles/state; geometry assertions poll actual rectangles rather than mocking layout.
+
+Browser fixtures import `@tumaet/ui-react`; Vite resolves it to `dist/index.js`, while the browser TypeScript project checks the source public API. Release validation supplies `dist` from the verified tarball and invokes Vitest directly so those bytes are preserved.
+
+Run `pnpm test:storybook` to execute the published examples and their interaction/accessibility checks in both themes using Chromium.
 
 Use unit tests for AET composition, labels, translations, callback/ref forwarding and owned state or promise lifetimes. Use real browsers for native focus, keyboard/pointer interaction, forms, positioning and emitted CSS; avoid repeating the same workflow in jsdom. Await the relevant state or promise instead of flushing an arbitrary timer.
 

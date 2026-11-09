@@ -1,6 +1,8 @@
 import {
   Children,
   useEffect,
+  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type HTMLAttributes,
@@ -11,6 +13,7 @@ import {
 } from 'react';
 import { cx } from '../../internal/cx';
 import { useTranslate } from '../../internal/i18n';
+import { mergeRefs } from '../../internal/merge-refs';
 
 export type SplitterLayout = 'horizontal' | 'vertical';
 
@@ -45,19 +48,10 @@ function percentage(value: number | undefined): number {
   return value !== undefined && Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
 }
 
-function initialSize(sizes: readonly [number, number], key: string | undefined): number {
+function initialSize(sizes: readonly [number, number]): number {
   const [first, second] = sizes;
   const sum = first + second;
-  let initial = Number.isFinite(sum) && first >= 0 && second >= 0 && sum > 0 ? (first * 100) / sum : 50;
-  if (key !== undefined && key !== '') {
-    try {
-      const stored = typeof window === 'undefined' ? null : window.localStorage.getItem(key);
-      if (stored !== null && Number.isFinite(Number(stored))) initial = Number(stored);
-    } catch {
-      // Resizing stays available when storage is disabled.
-    }
-  }
-  return initial;
+  return Number.isFinite(sum) && first >= 0 && second >= 0 && sum > 0 ? (first * 100) / sum : 50;
 }
 
 export function Splitter({
@@ -77,6 +71,7 @@ export function Splitter({
 }: SplitterProps) {
   const t = useTranslate();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const mergedRootRef = useMemo(() => mergeRefs(rootRef, ref), [ref]);
   const horizontal = layout === 'horizontal';
   const isCollapsed = collapsedSecondSize !== undefined && collapsedSecondSize !== '';
   const firstMinSize = minSizes[0];
@@ -93,16 +88,31 @@ export function Splitter({
 
   // User resizes are kept until the initial sizes (or the storage key) change.
   // `resets` counts replacements of the sizes from outside; they end a running drag, like in the Angular version.
-  const [state, setState] = useState(() => ({ signature, size: initialSize(panelSizes, storageKey), resets: 0 }));
+  const [state, setState] = useState(() => ({ signature, size: initialSize(panelSizes), resets: 0 }));
   let rawSize = state.size;
   let resets = state.resets;
   if (state.signature !== signature) {
-    rawSize = initialSize(panelSizes, storageKey);
+    rawSize = initialSize(panelSizes);
     // A parent echoing the emitted sizes only differs by rounding and must not end the drag.
     if (Math.abs(clamp(rawSize) - clamp(state.size)) > 1e-9) resets += 1;
     setState({ signature, size: rawSize, resets });
   }
   const size = clamp(rawSize);
+
+  // Restore browser-owned persistence after hydration, and after an external size/key reset.
+  useLayoutEffect(() => {
+    if (storageKey === undefined) return;
+    let stored: string | null | undefined;
+    try {
+      stored = rootRef.current?.ownerDocument.defaultView?.localStorage.getItem(storageKey);
+    } catch {
+      // Resizing stays available when storage is disabled.
+      return;
+    }
+    if (stored === undefined || stored === null || !Number.isFinite(Number(stored))) return;
+    const saved = Number(stored);
+    setState((current) => (current.size === saved ? current : { ...current, size: saved }));
+  }, [storageKey, resets]);
 
   const latest = useRef({ size, clamp, onSizesChange, onResizeEnd, storageKey });
   latest.current = { size, clamp, onSizesChange, onResizeEnd, storageKey };
@@ -111,7 +121,7 @@ export function Splitter({
   // Changing the constraints, layout, gutter or collapsed state, or replacing the sizes, ends a running drag.
   useEffect(() => {
     dragCleanup.current?.();
-  }, [resets, layout, firstMinSize, secondMinSize, collapsedSecondSize, gutterSize]);
+  }, [resets, layout, storageKey, firstMinSize, secondMinSize, collapsedSecondSize, gutterSize]);
 
   const update = (value: number) => {
     const next = latest.current.clamp(value);
@@ -124,7 +134,7 @@ export function Splitter({
     const { size: current, storageKey: key } = latest.current;
     if (key !== undefined && key !== '') {
       try {
-        window.localStorage.setItem(key, String(current));
+        rootRef.current?.ownerDocument.defaultView?.localStorage.setItem(key, String(current));
       } catch {
         // Storage failures must not interrupt the workflow.
       }
@@ -137,9 +147,10 @@ export function Splitter({
     const decrease = horizontal ? 'ArrowLeft' : 'ArrowUp';
     const increase = horizontal ? 'ArrowRight' : 'ArrowDown';
     const step = event.shiftKey ? KEY_STEP_SHIFT : KEY_STEP;
+    const direction = horizontal && rootRef.current && getComputedStyle(rootRef.current).direction === 'rtl' ? -1 : 1;
     let value = size;
-    if (event.key === decrease) value -= step;
-    else if (event.key === increase) value += step;
+    if (event.key === decrease) value -= step * direction;
+    else if (event.key === increase) value += step * direction;
     else if (event.key === 'Home') value = minimum;
     else if (event.key === 'End') value = maximum;
     else return;
@@ -164,9 +175,9 @@ export function Splitter({
     if (available <= 0) return;
     const start = horizontal ? event.clientX : event.clientY;
     const previous = size;
+    const direction = horizontal && getComputedStyle(root).direction === 'rtl' ? -1 : 1;
     const pointerId = event.pointerId;
     separator.focus();
-    // jsdom has no pointer capture.
     if ('setPointerCapture' in separator) separator.setPointerCapture(pointerId);
     // A full-viewport shield keeps embedded frames (PDF, video) from swallowing the gesture.
     const shield = document.createElement('div');
@@ -176,7 +187,7 @@ export function Splitter({
     document.body.appendChild(shield);
     const onMove = (move: globalThis.PointerEvent) => {
       if (move.pointerId === pointerId)
-        update(previous + (((horizontal ? move.clientX : move.clientY) - start) * 100) / available);
+        update(previous + (((horizontal ? move.clientX : move.clientY) - start) * direction * 100) / available);
     };
     const cleanup = () => {
       document.removeEventListener('pointermove', onMove);
@@ -214,16 +225,7 @@ export function Splitter({
   const safeGutter = gutterSize !== undefined && Number.isFinite(gutterSize) ? Math.max(0, gutterSize) : undefined;
 
   return (
-    <div
-      {...rest}
-      ref={(node) => {
-        rootRef.current = node;
-        if (typeof ref === 'function') return ref(node);
-        if (ref) ref.current = node;
-      }}
-      data-layout={layout}
-      className={cx('tumaet-ui-splitter', className)}
-    >
+    <div {...rest} ref={mergedRootRef} data-layout={layout} className={cx('tumaet-ui-splitter', className)}>
       <div className="tumaet-ui-splitter-panel" style={{ flex: isCollapsed ? '1 1 0' : `${size} 1 0` }}>
         {firstPanel}
       </div>

@@ -149,6 +149,22 @@ export default tseslint.config(
       'jsx-a11y/no-autofocus': ['error', { ignoreNonDOM: true }],
     },
   },
+  {
+    files: ['tests/browser/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../../src', '../../src/**'],
+              message: 'Browser fixtures exercise the built public API; import from @tumaet/ui-react.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   // Stories.
   { extends: [storybook.configs['flat/recommended']] },
   { files: ['.storybook/**'], rules: { 'storybook/story-exports': 'off' } },

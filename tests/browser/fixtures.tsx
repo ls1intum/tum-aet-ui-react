@@ -9,8 +9,6 @@ import {
   DialogPopup,
   DialogTitle,
   DialogClose,
-} from '../../src/components/dialog';
-import {
   Popover,
   PopoverTrigger,
   PopoverPortal,
@@ -19,8 +17,6 @@ import {
   PopoverTitle,
   PopoverDescription,
   PopoverClose,
-} from '../../src/components/popover';
-import {
   Select,
   SelectTrigger,
   SelectValue,
@@ -29,8 +25,10 @@ import {
   SelectPopup,
   SelectList,
   type SelectProps,
-} from '../../src/components/select';
-import { Field, FieldLabel, FieldDescription } from '../../src/components/form-field';
+  Field,
+  FieldLabel,
+  FieldDescription,
+} from '@tumaet/ui-react';
 
 export const OPTIONS = ['Alpha', 'Beta', 'Gamma'].map((value) => ({ key: value, value, label: value }));
 
@@ -63,7 +61,7 @@ export function CourseSelect({
         <SelectPortal container={container}>
           <SelectPositioner align="start">
             <SelectPopup>
-              <SelectList />
+              <SelectList aria-labelledby={`${id}-label`} />
             </SelectPopup>
           </SelectPositioner>
         </SelectPortal>
@@ -256,7 +254,7 @@ export function SelectFormFixture({
           <SelectPortal>
             <SelectPositioner>
               <SelectPopup>
-                <SelectList />
+                <SelectList aria-labelledby={`${id}-label`} />
               </SelectPopup>
             </SelectPositioner>
           </SelectPortal>
@@ -301,7 +299,7 @@ export function SelectResetFixture({ defaultOpen = false }: { defaultOpen?: bool
         <SelectPortal>
           <SelectPositioner>
             <SelectPopup>
-              <SelectList />
+              <SelectList aria-label="Reset course" />
             </SelectPopup>
           </SelectPositioner>
         </SelectPortal>
@@ -350,7 +348,7 @@ export function SelectReorderFixture({ reversed = false }: { reversed?: boolean 
       <SelectPortal>
         <SelectPositioner>
           <SelectPopup>
-            <SelectList />
+            <SelectList aria-label="Reordered course" />
           </SelectPopup>
         </SelectPositioner>
       </SelectPortal>
