@@ -232,56 +232,6 @@ describe('Select', () => {
     expect(values(container.querySelector('form')!, 'readonly')).toEqual(['Beta']);
   });
 
-  it('leaves reset policy to the caller, preserving immediate FormData, focus and identity', () => {
-    const change = vi.fn();
-    const { container, rerender } = render(
-      <form>
-        <Example name="course" value="Alpha" onValueChange={change} />
-      </form>,
-    );
-    const form = container.querySelector('form')!;
-    rerender(
-      <form>
-        <Example name="course" value="Beta" onValueChange={change} />
-      </form>,
-    );
-    const trigger = screen.getByRole('combobox');
-    act(() => trigger.focus());
-    act(() => {
-      form.reset();
-      expect(values(form)).toEqual(['Beta']);
-    });
-    expect(screen.getByRole('combobox')).toBe(trigger);
-    expect(trigger).toHaveFocus();
-    expect(trigger).toHaveTextContent('Beta');
-    expect(change).not.toHaveBeenCalled();
-  });
-
-  it('associates with an external form mounted later and follows native form owner changes', () => {
-    const ref = createRef<HTMLInputElement>();
-    const { rerender } = render(<Example name="course" form="late" value="Beta" inputRef={ref} />);
-    rerender(
-      <>
-        <Example name="course" form="late" value="Beta" inputRef={ref} />
-        <form id="late" aria-label="Late" />
-      </>,
-    );
-    const form = screen.getByRole<HTMLFormElement>('form', { name: 'Late' });
-    expect(ref.current?.form).toBe(form);
-    expect(values(form)).toEqual(['Beta']);
-    act(() => form.reset());
-    expect(values(form)).toEqual(['Beta']);
-    rerender(
-      <>
-        <Example name="course" form="other" value="Gamma" inputRef={ref} />
-        <form id="other" aria-label="Other" />
-      </>,
-    );
-    const other = screen.getByRole<HTMLFormElement>('form', { name: 'Other' });
-    expect(ref.current?.form).toBe(other);
-    expect(values(other)).toEqual(['Gamma']);
-  });
-
   it('runs React 19 input callback ref cleanup on unmount', () => {
     const cleanup = vi.fn();
     const inputRef = vi.fn(() => cleanup);

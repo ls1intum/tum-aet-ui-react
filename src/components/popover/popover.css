@@ -10,9 +10,6 @@
 }
 
 .tumaet-ui-popover-panel {
-  /* stylelint-disable-next-line custom-property-pattern -- Base UI's public positioning variable. */
-  transform-origin: var(--transform-origin);
-
   overflow-y: auto;
 
   box-sizing: border-box;
@@ -45,14 +42,13 @@
   outline-offset: 2px;
 }
 
+/* Scaling this popup changes the anchor geometry of nested overlays. */
 @keyframes tumaet-ui-popover-in {
   from {
-    transform: scale(0.92);
     opacity: 0;
   }
 
   to {
-    transform: scale(1);
     opacity: 1;
   }
 }

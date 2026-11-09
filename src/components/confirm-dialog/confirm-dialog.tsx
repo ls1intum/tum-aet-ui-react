@@ -38,8 +38,8 @@ interface Entry {
 interface ConfirmContextValue {
   entries: ReadonlyMap<string | undefined, Entry>;
   confirm: ConfirmFunction;
-  /** Settles and removes the pending request for `key`. */
-  settle: (key: string | undefined, accepted: boolean) => void;
+  /** Bind decisions to the rendered entry; callbacks may replace it before settlement. */
+  settle: (key: string | undefined, accepted: boolean, expected: Entry | undefined) => void;
 }
 
 const ConfirmContext = createContext<ConfirmContextValue | null>(null);
@@ -77,9 +77,9 @@ export function ConfirmProvider({ children }: { children?: ReactNode }) {
   }, []);
 
   const settle = useCallback(
-    (key: string | undefined, accepted: boolean) => {
+    (key: string | undefined, accepted: boolean, expected: Entry | undefined) => {
       const entry = latest.current.get(key);
-      if (!entry) return;
+      if (!entry || entry !== expected) return;
       const next = new Map(latest.current);
       next.delete(key);
       commit(next);
@@ -135,13 +135,14 @@ export function ConfirmDialog({ confirmKey, container, onOpenChange }: ConfirmDi
   const { entries, settle } = useConfirmContext();
   const t = useTranslate();
   const rejectButton = useRef<HTMLButtonElement>(null);
-  const request = entries.get(confirmKey)?.request;
+  const entry = entries.get(confirmKey);
+  const request = entry?.request;
   return (
     <AlertDialog.Root
       open={request !== undefined}
       onOpenChange={(open, details) => {
         onOpenChange?.(open, details);
-        if (!open && !details.isCanceled) settle(confirmKey, false);
+        if (!open && !details.isCanceled) settle(confirmKey, false, entry);
       }}
     >
       {request !== undefined ? (
@@ -174,11 +175,11 @@ export function ConfirmDialog({ confirmKey, container, onOpenChange }: ConfirmDi
               <Button
                 ref={rejectButton}
                 severity={request.rejectSeverity ?? 'secondary'}
-                onClick={() => settle(confirmKey, false)}
+                onClick={() => settle(confirmKey, false, entry)}
               >
                 {request.rejectLabel}
               </Button>
-              <Button severity={request.acceptSeverity ?? 'primary'} onClick={() => settle(confirmKey, true)}>
+              <Button severity={request.acceptSeverity ?? 'primary'} onClick={() => settle(confirmKey, true, entry)}>
                 {request.acceptLabel}
               </Button>
             </div>

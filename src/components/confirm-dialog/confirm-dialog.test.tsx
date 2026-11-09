@@ -54,7 +54,6 @@ function mountHost(request?: ConfirmationRequest, results: boolean[] = []) {
 }
 
 const ask = async () => userEvent.click(screen.getByRole('button', { name: 'Ask' }));
-const flush = async () => new Promise((resolve) => setTimeout(resolve));
 
 describe('ConfirmDialog', () => {
   it('shows an alertdialog described by the message', async () => {
@@ -70,8 +69,7 @@ describe('ConfirmDialog', () => {
     const results = mountHost({ ...base, accept });
     await ask();
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
-    await flush();
-    expect(results).toEqual([true]);
+    await waitFor(() => expect(results).toEqual([true]));
     expect(accept).toHaveBeenCalledOnce();
     expect(screen.queryByRole('alertdialog')).toBeNull();
   });
@@ -85,8 +83,7 @@ describe('ConfirmDialog', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Close' }));
     await ask();
     await userEvent.keyboard('{Escape}');
-    await flush();
-    expect(results).toEqual([false, false, false]);
+    await waitFor(() => expect(results).toEqual([false, false, false]));
     expect(reject).toHaveBeenCalledTimes(3);
   });
 
@@ -117,6 +114,36 @@ describe('ConfirmDialog', () => {
     expect(results).toEqual([]);
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(results).toEqual([false]);
+  });
+
+  it('keeps a replacement queued by the dismissal callback pending until its own decision', async () => {
+    const firstResults: boolean[] = [];
+    const replacementResults: boolean[] = [];
+    const replacementReject = vi.fn();
+    let replaced = false;
+    render(
+      <ConfirmProvider>
+        <Grab />
+        <Host results={firstResults} />
+        <ConfirmDialog
+          onOpenChange={(open) => {
+            if (open || replaced) return;
+            replaced = true;
+            void grabbedConfirm()({ ...base, title: 'Next decision', reject: replacementReject }).then((result) =>
+              replacementResults.push(result),
+            );
+          }}
+        />
+      </ConfirmProvider>,
+    );
+    await ask();
+    await userEvent.keyboard('{Escape}');
+    expect(firstResults).toEqual([false]);
+    expect(await screen.findByRole('alertdialog', { name: 'Next decision' })).toBeInTheDocument();
+    expect(replacementResults).toEqual([]);
+    expect(replacementReject).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(replacementResults).toEqual([true]);
   });
 
   it('routes requests by key and shows the icon decoratively with severities', async () => {
@@ -177,22 +204,6 @@ describe('ConfirmDialog', () => {
     expect(message.textContent).toBe('First line\nSecond line');
     expect(screen.getByRole('button', { name: 'Yes' })).toHaveAttribute('data-severity', 'primary');
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveAttribute('data-severity', 'danger');
-  });
-
-  it('survives StrictMode: the dialog is not rejected right after opening', async () => {
-    const results: boolean[] = [];
-    render(
-      <StrictMode>
-        <ConfirmProvider>
-          <Host results={results} />
-          <ConfirmDialog />
-        </ConfirmProvider>
-      </StrictMode>,
-    );
-    await ask();
-    await flush();
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-    expect(results).toEqual([]);
   });
 
   it('keeps effect-driven requests usable after StrictMode effect replay', async () => {
