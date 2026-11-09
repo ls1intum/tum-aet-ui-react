@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoA11yViolations } from '../../test-utils';
 import {
@@ -15,40 +15,25 @@ import {
 
 function Example(props: PopoverProps) {
   return (
-    <>
-      <Popover {...props}>
-        <PopoverTrigger>Open</PopoverTrigger>
-        <PopoverPortal>
-          <PopoverPositioner sideOffset={8}>
-            <PopoverPopup>
-              <PopoverTitle>Details</PopoverTitle>
-              <PopoverDescription>More information.</PopoverDescription>
-              <input aria-label="Nickname" />
-              <PopoverClose>Done</PopoverClose>
-            </PopoverPopup>
-          </PopoverPositioner>
-        </PopoverPortal>
-      </Popover>
-      <button type="button">After</button>
-    </>
+    <Popover {...props}>
+      <PopoverTrigger>Open</PopoverTrigger>
+      <PopoverPortal>
+        <PopoverPositioner>
+          <PopoverPopup>
+            <PopoverTitle>Details</PopoverTitle>
+            <PopoverDescription>More information.</PopoverDescription>
+            <PopoverClose>Done</PopoverClose>
+          </PopoverPopup>
+        </PopoverPositioner>
+      </PopoverPortal>
+    </Popover>
   );
 }
 
 describe('Popover', () => {
-  it('enters a named nonmodal popup, allows Tab to leave and restores focus on Escape', async () => {
-    render(<Example />);
-    const trigger = screen.getByRole('button', { name: 'Open' });
-    await userEvent.click(trigger);
+  it('exposes the popup title and description', () => {
+    render(<Example defaultOpen />);
     expect(screen.getByRole('dialog', { name: 'Details' })).toHaveAccessibleDescription('More information.');
-    await waitFor(() => expect(screen.getByRole('textbox')).toHaveFocus());
-    await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(trigger).toHaveFocus();
-    await userEvent.click(trigger);
-    await waitFor(() => expect(screen.getByRole('textbox')).toHaveFocus());
-    await userEvent.tab();
-    await userEvent.tab();
-    expect(screen.getByRole('button', { name: 'After' })).toHaveFocus();
   });
 
   it('lets the consumer cancel dismissal using upstream details', async () => {

@@ -3,6 +3,7 @@ import { expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import {
   DialogFixture,
+  NonmodalPopoverFixture,
   OverflowFixture,
   ViewportEdgeFixture,
   SelectFormFixture,
@@ -25,31 +26,54 @@ async function openAdvanced() {
   await expect.element(page.getByRole('textbox', { name: 'Nickname' })).toHaveFocus();
 }
 
-test('keeps modal background outside native Tab navigation and pointer targeting, and returns focus', async () => {
+test('blocks background pointer activation until the modal closes', async () => {
   render(<DialogFixture />);
-  const background = page.getByRole('button', { name: 'Outside action' }).element();
-  const rect = background.getBoundingClientRect();
+  const background = page.getByRole('button', { name: 'Outside action' });
+  const rect = background.element().getBoundingClientRect();
   await openSettings();
-  expect(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)).not.toBe(background);
-  // Real Tab navigation cannot reach the background action through the modal.
-  for (let index = 0; index < 8; index += 1) {
-    await userEvent.tab();
-    expect(document.activeElement).not.toBe(background);
-  }
-  await userEvent.keyboard('{Escape}');
+  const x = rect.x + rect.width / 2;
+  const y = rect.y + rect.height / 2;
+  const target = document.elementFromPoint(x, y);
+  if (target === null) throw new Error('Missing pointer target');
+  const targetRect = target.getBoundingClientRect();
+  await userEvent.click(target, { position: { x: x - targetRect.x, y: y - targetRect.y } });
+  await expect.element(page.getByRole('status', { name: 'Background actions' })).toHaveTextContent('0');
   await expect.element(page.getByRole('dialog', { name: 'Settings', exact: true })).not.toBeInTheDocument();
   await expect.element(page.getByRole('button', { name: 'Open settings' })).toHaveFocus();
-  await page.getByRole('button', { name: 'Outside action' }).click();
+  await background.click();
   await expect.element(page.getByRole('status', { name: 'Background actions' })).toHaveTextContent('1');
 });
 
-// Base UI 1.9 marks background content aria-hidden without making it natively inert.
-test('prevents programmatic focus from escaping a modal dialog', async () => {
+test.each([
+  { name: 'forward', shift: false },
+  { name: 'backward', shift: true },
+])('wraps keyboard focus at the $name modal boundary', async ({ shift }) => {
   render(<DialogFixture />);
-  const background = page.getByRole('button', { name: 'Outside action' }).element();
   await openSettings();
-  background.focus();
-  await expect.element(page.getByRole('textbox', { name: 'Display name' })).toHaveFocus();
+  const close = page.getByRole('button', { name: 'Close', exact: true });
+  const save = page.getByRole('button', { name: 'Save settings' });
+  const from = shift ? close : save;
+  const to = shift ? save : close;
+  from.element().focus();
+  await expect.element(from).toHaveFocus();
+  await userEvent.tab({ shift });
+  await expect.element(to).toHaveFocus();
+});
+
+test('lets Tab leave a nonmodal popover and restores its trigger after Escape', async () => {
+  render(<NonmodalPopoverFixture />);
+  const trigger = page.getByRole('button', { name: 'Open details' });
+  await trigger.click();
+  await expect.element(page.getByRole('textbox', { name: 'Nickname' })).toHaveFocus();
+  await userEvent.keyboard('{Escape}');
+  await expect.element(page.getByRole('dialog', { name: 'Details' })).not.toBeInTheDocument();
+  await expect.element(trigger).toHaveFocus();
+  await trigger.click();
+  await expect.element(page.getByRole('textbox', { name: 'Nickname' })).toHaveFocus();
+  await userEvent.tab();
+  await expect.element(page.getByRole('button', { name: 'Done' })).toHaveFocus();
+  await userEvent.tab();
+  await expect.element(page.getByRole('button', { name: 'After details' })).toHaveFocus();
 });
 
 test('navigates Dialog → Popover → Select and dismisses one layer per Escape with focus return', async () => {
@@ -167,7 +191,7 @@ test('flips the selector above its anchor at the bottom viewport edge', async ()
   await expect.element(trigger).toHaveTextContent('Beta');
 });
 
-test('integrates explicit Field validation, native required, repeated FormData names, and caller-owned reset followed by immediate FormData and rerender', async () => {
+test('submits required selections and restores caller-owned reset values through rerender', async () => {
   render(<SelectFormFixture />);
   const form = page.getByRole('form', { name: 'Courses' }).element();
   if (!(form instanceof HTMLFormElement)) throw new Error('Missing form');

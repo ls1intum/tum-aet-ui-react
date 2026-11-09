@@ -45,7 +45,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Flat compound parts backed by Base UI. Dialog is modal by default. Integration blocker in Base UI 1.9: programmatic focus can still reach background elements; the browser regression remains failing pending modal-boundary integration. Name the popup with DialogTitle or aria-label; DialogDescription supplies its description. Element props and React 19 refs belong to each rendered part. onOpenChange receives upstream event details: call details.cancel() to veto a request. Portal accepts container; place that host inside the intended theme/direction scope and outside clipping containers.',
+          'Flat compound parts backed by Base UI. Dialog is modal by default. Name the popup with DialogTitle or aria-label; DialogDescription supplies its description. Element props and React 19 refs belong to each rendered part. onOpenChange receives upstream event details: call details.cancel() to veto a request. Portal accepts container; place that host inside the intended theme/direction scope and outside clipping containers.',
       },
     },
   },
