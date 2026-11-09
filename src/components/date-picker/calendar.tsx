@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type HTMLAttributes, type KeyboardEvent, type Ref } from 'react';
 import { cx } from '../../internal/cx';
+import { mergeRefs } from '../../internal/merge-refs';
 import { ChevronLeftIcon, ChevronRightIcon } from '../../internal/icons';
 import { useLocale, useTranslate } from '../../internal/i18n';
 import {
@@ -26,8 +27,6 @@ export interface CalendarProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onC
   max?: Date | null;
   /** Shows the days but ignores selection. */
   disabled?: boolean;
-  /** Moves focus to the focused day when the calendar mounts, for use inside a dialog. */
-  focusOnMount?: boolean;
   onDaySelect?: (day: Date) => void;
   /** Called with the first day of the month the user navigates to. */
   onMonthChange?: (month: Date) => void;
@@ -41,7 +40,6 @@ export function Calendar({
   min,
   max,
   disabled,
-  focusOnMount,
   onDaySelect,
   onMonthChange,
   className,
@@ -52,7 +50,8 @@ export function Calendar({
   const locale = useLocale();
   const today = useMemo(() => new Date(), []);
   const root = useRef<HTMLDivElement | null>(null);
-  const pendingFocus = useRef(Boolean(focusOnMount));
+  const mergedRootRef = useMemo(() => mergeRefs(root, ref), [ref]);
+  const pendingFocus = useRef(false);
 
   const selectedKey = selected ? toIsoDay(selected) : '';
   const monthKey = `${activeMonth.getFullYear()}-${activeMonth.getMonth()}`;
@@ -101,8 +100,6 @@ export function Calendar({
     if (button) {
       pendingFocus.current = false;
       button.focus();
-      // A popup that is still being positioned is hidden and refuses focus, so try once more on the next frame.
-      if (document.activeElement !== button) requestAnimationFrame(() => button.focus());
     }
   });
 
@@ -167,15 +164,7 @@ export function Calendar({
   };
 
   return (
-    <div
-      {...rest}
-      ref={(node) => {
-        root.current = node;
-        if (typeof ref === 'function') ref(node);
-        else if (ref) ref.current = node;
-      }}
-      className={cx('tumaet-ui-calendar', className)}
-    >
+    <div {...rest} ref={mergedRootRef} className={cx('tumaet-ui-calendar', className)}>
       <div className="tumaet-ui-calendar-header">
         <button
           type="button"

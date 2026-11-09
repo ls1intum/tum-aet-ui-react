@@ -18,7 +18,7 @@ export default function DatePickerDemo() {
           <label htmlFor="dp-deadline" style={label}>
             Deadline
           </label>
-          <DatePicker id="dp-deadline" value={deadline} onChange={setDeadline} showTimeZoneWarning />
+          <DatePicker id="dp-deadline" value={deadline} onValueChange={setDeadline} showTimeZoneWarning />
           <p>Value: {deadline ? deadline.toString() : 'none'}</p>
         </div>
         <div>
@@ -29,7 +29,7 @@ export default function DatePickerDemo() {
             id="dp-end"
             dateOnly
             value={end}
-            onChange={setEnd}
+            onValueChange={setEnd}
             min={today}
             max={inThirtyDays}
             aria-describedby="dp-end-hint"
@@ -42,7 +42,7 @@ export default function DatePickerDemo() {
           <label htmlFor="dp-time" style={label}>
             Start time
           </label>
-          <DatePicker id="dp-time" timeOnly value={start} onChange={setStart} />
+          <DatePicker id="dp-time" timeOnly value={start} onValueChange={setStart} />
         </div>
         <div>
           <label htmlFor="dp-blur" style={label}>

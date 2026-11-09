@@ -1,10 +1,10 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, screen, userEvent, waitFor, waitForElementToBeRemoved, within } from 'storybook/test';
 import { DatePicker, type DatePickerProps } from './date-picker';
 
 /** A picker with its own state and a visible label, so each story works on its own. */
-function Field({ value: initial, onChange, ...props }: DatePickerProps) {
+function Field({ value: initial, onValueChange, ...props }: DatePickerProps) {
   const [value, setValue] = useState<Date | null>(initial ?? null);
   const id = useId();
   const label = props['aria-label'];
@@ -19,9 +19,9 @@ function Field({ value: initial, onChange, ...props }: DatePickerProps) {
         {...props}
         id={id}
         value={value}
-        onChange={(next) => {
+        onValueChange={(next) => {
           setValue(next);
-          onChange?.(next);
+          onValueChange?.(next);
         }}
       />
     </div>
@@ -48,7 +48,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Date-and-time field with typed input (`DD.MM.YYYY HH:mm`) and an accessible calendar dialog. `timeOnly` reduces it to a time, `dateOnly` to a date, `inline` shows the calendar and the time steppers in place. The value is a `Date` in the local time zone, `null` when empty. Invalid text stays in the field without changing the value; `onInputValidityChange` reports it. Give the field a name with a `<label htmlFor>` pointing at `id`, or with `aria-label` / `aria-labelledby`.',
+          'Date-and-time field with typed input (`DD.MM.YYYY HH:mm`) and a nonmodal calendar popup. Done and Escape return focus to the text field; Tab can leave the popup. `portalContainer` places the popup and time-zone tooltip within a scoped theme. The picker does not expose native submission or reset; controlled values and reset policy belong to the caller. `timeOnly` reduces it to a time, `dateOnly` to a date, `inline` shows the calendar and the time steppers in place. The value is a `Date` in the local time zone, `null` when empty. Invalid text stays in the field without changing the value; `onInputValidityChange` reports it. Give the field a name with a `<label htmlFor>` pointing at `id`, or with `aria-label` / `aria-labelledby`.',
       },
     },
   },
@@ -75,7 +75,7 @@ export const CalendarInteraction: Story = {
     const dialogRemoved = waitForElementToBeRemoved(dialog);
     await userEvent.keyboard('{Escape}');
     await dialogRemoved;
-    await expect(trigger).toHaveFocus();
+    await expect(canvas.getByRole('combobox', { name: 'Deadline' })).toHaveFocus();
 
     await userEvent.click(canvas.getByRole('button', { name: 'Clear date' }));
     const input = canvas.getByRole('combobox', { name: 'Deadline' });
@@ -230,4 +230,28 @@ export const Disabled: Story = {
 
 export const DisabledEmpty: Story = {
   args: { disabled: true, value: null },
+};
+
+function ScopedField(props: DatePickerProps) {
+  const host = useRef<HTMLDivElement>(null);
+  return (
+    <div className="tumaet-ui-root" data-theme="dark" style={{ padding: 24 }}>
+      <div style={{ overflow: 'hidden', height: 120 }}>
+        <Field {...props} portalContainer={host} />
+      </div>
+      <div ref={host} />
+    </div>
+  );
+}
+
+export const ScopedTheme: Story = {
+  render: (args) => <ScopedField {...args} />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The portal host sits inside the dark theme and outside the clipping container. Both the calendar and time-zone tooltip inherit the destination theme.',
+      },
+    },
+  },
 };
