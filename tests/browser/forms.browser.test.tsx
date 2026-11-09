@@ -2,7 +2,17 @@ import { useState } from 'react';
 import { render } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { Field, FieldDescription, FieldError, FieldLabel, FormField, Input, Textarea, InputNumber } from '../../src';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FormField,
+  Input,
+  Textarea,
+  InputNumber,
+  SearchField,
+} from '../../src';
 
 function NativeForm({ cancelReset = false, revision = 0 }: { cancelReset?: boolean; revision?: number }) {
   const [controlled, setControlled] = useState('Caller');
@@ -50,6 +60,46 @@ function NativeForm({ cancelReset = false, revision = 0 }: { cancelReset?: boole
     </form>
   );
 }
+
+test('controlled search clearing, readonly submission and reset follow caller policy', async () => {
+  function QueryForm() {
+    const [query, setQuery] = useState('Initial');
+    const [cancel, setCancel] = useState(true);
+    return (
+      <form
+        onReset={(event) => {
+          if (cancel) event.preventDefault();
+          else setQuery('Initial');
+        }}
+      >
+        <SearchField aria-label="Query" name="query" value={query} onValueChange={setQuery} />
+        <SearchField aria-label="Locked query" name="locked" value="Fixed" readOnly />
+        <button type="reset">Reset query</button>
+        <button type="button" onClick={() => setCancel(false)}>
+          Allow query reset
+        </button>
+      </form>
+    );
+  }
+  const { container } = render(<QueryForm />);
+  const form = container.querySelector('form');
+  if (!form) throw new Error('Missing query form');
+  const query = page.getByRole('searchbox', { name: 'Query', exact: true });
+  await query.fill('Changed');
+  await userEvent.tab();
+  await userEvent.keyboard('{Enter}');
+  await expect.element(query).toHaveValue('');
+  await expect.element(query).toHaveFocus();
+  await expect.element(page.getByRole('button', { name: 'Clear search' })).toBeDisabled();
+  expect(Object.fromEntries(new FormData(form))).toEqual({ query: '', locked: 'Fixed' });
+  await query.fill('Working');
+  await page.getByRole('button', { name: 'Reset query', exact: true }).click();
+  await expect.element(query).toHaveValue('Working');
+  await page.getByRole('button', { name: 'Allow query reset' }).click();
+  await page.getByRole('button', { name: 'Reset query', exact: true }).click();
+  await expect.element(query).toHaveValue('Initial');
+  expect(Object.fromEntries(new FormData(form))).toEqual({ query: 'Initial', locked: 'Fixed' });
+});
 
 test('preserves native FormData, validity and reset through rerenders; the caller owns controlled values', async () => {
   const { container, rerender } = render(<NativeForm />);
@@ -195,10 +245,11 @@ test('native submission honors required, pattern, min, max and step constraints 
 
 test('explicit native labels focus controls; caller-owned errors and descriptions update independently of native validity', async () => {
   function Example({ invalid = false }: { invalid?: boolean }) {
+    const [points, setPoints] = useState<number | null>(2);
     return (
       <>
         <FormField label="Points" hint="Available points" invalid={invalid} error="Check the points">
-          {(control) => <InputNumber {...control} defaultValue={2} />}
+          {(control) => <InputNumber {...control} value={points} onValueChange={setPoints} />}
         </FormField>
         <Field data-invalid={invalid || undefined}>
           <FieldLabel htmlFor="summary">Summary</FieldLabel>
@@ -217,7 +268,7 @@ test('explicit native labels focus controls; caller-owned errors and description
     );
   }
   const { rerender } = render(<Example />);
-  const points = page.getByRole('spinbutton', { name: 'Points' });
+  const points = page.getByRole('textbox', { name: 'Points' });
   await page.getByText('Points', { exact: true }).click();
   await expect.element(points).toHaveFocus();
   await userEvent.keyboard('{ArrowUp}');

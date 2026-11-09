@@ -7,6 +7,7 @@ import { Field, FieldDescription, FieldLabel, FormField } from './form-field';
 export default function FormFieldDemo() {
   const base = useId();
   const [login, setLogin] = useState('');
+  const [points, setPoints] = useState<number | null>(null);
   const invalid = login.length > 0 && login.length < 3;
   return (
     <div style={{ display: 'grid', gap: 16, maxWidth: 360 }}>
@@ -19,7 +20,7 @@ export default function FormFieldDemo() {
         <FieldDescription id={`${base}-summary-hint`}>Visible to students.</FieldDescription>
       </Field>
       <FormField label="Points" hint="Between 0 and 100">
-        {(control) => <InputNumber {...control} min={0} max={100} />}
+        {(control) => <InputNumber {...control} value={points} onValueChange={setPoints} min={0} max={100} />}
       </FormField>
       <Field>
         <span className="tumaet-ui-form-field-label" id={`${base}-terms-label`}>

@@ -12,6 +12,12 @@ All notable changes to `@tumaet/ui-react`. The version numbers are independent o
 - Rename confirmation `header` to `title`. Confirmation promises settle on decisions, replacement or provider unmount; callback failures reject their request's promise.
 - Replace Autocomplete and MultiSelect with a typed, compound Combobox for single or multiple searchable selection. Keep query text separate from controlled selected values; server filtering uses `filter={null}` and `filteredItems` without dropping selected descriptors. List items and chips use stable keys. The legacy listbox interaction helpers are removed.
 - DatePicker uses a nonmodal Base UI popup, exposes `portalContainer` and reports `onValueChange`. Tab can leave the calendar; Done and Escape return to its text field. Date/time parsing and calendar navigation remain domain behavior. DatePicker does not expose native form submission or reset. The last custom Floating consumer and engine are removed.
+- Tabs delegate selection, focus and measurement to Base UI. Replace `onChange` with `onValueChange`, `activation` with `TabList.activateOnFocus`, and `preserveContent` with `TabPanel.keepMounted`. Tab activation is manual by default; add `TabIndicator` where needed.
+- InputNumber requires controlled `number | null` and uses `onValueChange`, `onValueCommitted` and Intl `format`. Native props/ref target its visible textbox; `rootProps` targets the wrapper. Replace the old fraction/grouping/accepted-separator/snap aliases with Base UI number options. Numeric form reset is caller-owned.
+- SearchField requires a controlled string and uses `onValueChange`; remove `defaultValue` and the old string-valued `onChange`. Query/reset policy belongs to the caller. Read-only search fields also disable their clear action.
+- Panel exposes flat header/title/trigger/content parts and Base UI's `open/defaultOpen/onOpenChange` disclosure API. The default is closed; static panels use `open` and omit a trigger.
+- SelectButton uses typed `items` and string-value arrays for both single and multiple selection; empty is `[]`. Replace `options`, property paths, scalar values and `onChange`. Base UI owns toggle and keyboard behavior.
+- Add `tumAetUi.inputNumber.increment`, `.decrement` and `.roleDescription` translations. Remove unused MultiSelect selection-count and Select filtering-result messages with their obsolete components.
 
 ```tsx
 <Select items={courses} value={course} onValueChange={setCourse}>
