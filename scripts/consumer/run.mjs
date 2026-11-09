@@ -73,7 +73,13 @@ assert.ok('output' in result);
 const chunks = result.output.filter((output) => output.type === 'chunk');
 const code = chunks.map((chunk) => chunk.code).join('\n');
 assert.ok(code.includes('tumaet-ui-btn'), 'Button must be present in the browser bundle');
-for (const unused of ['tumaet-ui-select', 'tumaet-ui-dialog', 'tumaet-ui-data-table', 'tumAetUi.datePicker']) {
+for (const unused of [
+  'tumaet-ui-autocomplete-container',
+  'tumaet-ui-select',
+  'tumaet-ui-dialog',
+  'tumaet-ui-data-table',
+  'tumAetUi.datePicker',
+]) {
   assert.ok(!code.includes(unused), `Unused component code survived tree shaking: ${unused}`);
 }
 const styles = result.output.find((output) => output.type === 'asset' && output.fileName.endsWith('.css'));

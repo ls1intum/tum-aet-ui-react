@@ -4,6 +4,15 @@ import { flushSync } from 'react-dom';
 import { expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import {
+  Dialog,
+  DialogTrigger,
+  DialogPortal,
+  DialogBackdrop,
+  DialogPopup,
+  DialogTitle,
+  DialogClose,
+} from '../../src/components/dialog';
+import {
   Combobox,
   ComboboxInputGroup,
   ComboboxInput,
@@ -196,13 +205,15 @@ test('keeps async query separate from selection, uses server filtering and ignor
     latest.resolve(['Alpha']);
     await Promise.resolve();
   });
-  await expect.element(page.getByRole('option', { name: 'Alpha' })).toBeVisible();
+  const visibleResults = () =>
+    Array.from(page.getByRole('listbox').element().querySelectorAll('[role="option"]'), (option) => option.textContent);
+  await expect.poll(visibleResults).toEqual(['Alpha']);
   expect(new FormData(formElement('Async')).get('course')).toBe('Gamma');
   await act(async () => {
     first.resolve(['Beta']);
     await Promise.resolve();
   });
-  await expect.element(page.getByRole('option', { name: 'Beta' })).not.toBeInTheDocument();
+  expect(visibleResults()).toEqual(['Alpha']);
   await userEvent.keyboard('{ArrowDown}{Enter}');
   expect(new FormData(formElement('Async')).get('course')).toBe('Alpha');
   await expect.element(input).toHaveValue('Alpha');
@@ -376,4 +387,44 @@ test('positions the built styled popup outside clipping while inheriting a scope
   await page.getByRole('option', { name: 'Gamma' }).click();
   await expect.element(input).toHaveValue('Gamma');
   await expect.element(input).toHaveFocus();
+});
+
+test('Escape closes results, clears selection and then dismisses the parent dialog', async () => {
+  render(
+    <Dialog>
+      <DialogTrigger>Open course picker</DialogTrigger>
+      <DialogPortal>
+        <DialogBackdrop />
+        <DialogPopup>
+          <DialogTitle>Course picker</DialogTitle>
+          <form aria-label="Dialog course">
+            <Single name="course" />
+            <DialogClose>Close course picker</DialogClose>
+          </form>
+        </DialogPopup>
+      </DialogPortal>
+    </Dialog>,
+  );
+  const trigger = page.getByRole('button', { name: 'Open course picker' });
+  const dialog = page.getByRole('dialog', { name: 'Course picker' });
+  const input = page.getByRole('combobox', { name: 'Course' });
+  await trigger.click();
+  await expect.element(input).toHaveFocus();
+  await userEvent.keyboard('ga{ArrowDown}{Enter}');
+  await expect.element(input).toHaveValue('Gamma');
+  await expect.element(dialog).toBeVisible();
+  await input.click();
+  await expect.element(page.getByRole('listbox')).toBeVisible();
+  await userEvent.keyboard('{Escape}');
+  await expect.element(page.getByRole('listbox')).not.toBeInTheDocument();
+  await expect.element(input).toHaveFocus();
+  await expect.element(dialog).toBeVisible();
+  expect(new FormData(formElement('Dialog course')).get('course')).toBe('Gamma');
+  await userEvent.keyboard('{Escape}');
+  await expect.element(input).toHaveValue('');
+  await expect.poll(() => new FormData(formElement('Dialog course')).get('course')).toBe('');
+  await expect.element(dialog).toBeVisible();
+  await userEvent.keyboard('{Escape}');
+  await expect.element(dialog).not.toBeInTheDocument();
+  await expect.element(trigger).toHaveFocus();
 });
