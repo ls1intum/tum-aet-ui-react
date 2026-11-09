@@ -15,7 +15,14 @@ import { CalendarIcon, XIcon } from '../../internal/icons';
 import { mergeRefs } from '../../internal/merge-refs';
 import { useControllable } from '../../internal/use-controllable';
 import { Button } from '../button/button';
-import { Tooltip } from '../tooltip/tooltip';
+import {
+  Tooltip,
+  TooltipArrow,
+  TooltipPopup,
+  TooltipPortal,
+  TooltipPositioner,
+  TooltipTrigger,
+} from '../tooltip/tooltip';
 import { Calendar } from './calendar';
 import {
   combineDateAndTime,
@@ -331,12 +338,24 @@ export function DatePicker({
   return (
     <div {...rootProps}>
       {showTimeZoneWarning ? (
-        <Tooltip content={timeZoneText} describesHost={false}>
-          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the tooltip trigger must be keyboard focusable to reveal the time zone */}
-          <span className="tumaet-ui-date-picker-timezone" tabIndex={0} role="img" aria-label={timeZoneText}>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focus exposes the time-zone tooltip to keyboard users
+              <span className="tumaet-ui-date-picker-timezone" tabIndex={0} role="img" aria-label={timeZoneText} />
+            }
+          >
             <GlobeIcon />
             <ClockIcon className="tumaet-ui-date-picker-timezone-clock" />
-          </span>
+          </TooltipTrigger>
+          <TooltipPortal>
+            <TooltipPositioner>
+              <TooltipPopup>
+                {timeZoneText}
+                <TooltipArrow />
+              </TooltipPopup>
+            </TooltipPositioner>
+          </TooltipPortal>
         </Tooltip>
       ) : null}
       <div ref={field} className="tumaet-ui-date-picker-field">

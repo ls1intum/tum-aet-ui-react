@@ -6,7 +6,8 @@ All notable changes to `@tumaet/ui-react`. The version numbers are independent o
 
 - Layer tokens, base rules and components under `tumaet-ui`. Declare application layer order before stylesheet imports; replace references to `tumaet-ui-theme`. Theme aliases and nested scopes follow the [theming contract](docs/theming.mdx).
 - Ship modular ESM and validate the packed artifact with fresh consumers. React and React DOM remain peers; Base UI is a runtime dependency.
-- Compose Dialog and Popover from flat Root, Trigger, Portal and Popup parts, with Backdrop or Positioner as appropriate. Base UI owns their interaction; trigger handles preserve typed payloads. Dialog refs now target the rendered Base UI part rather than an `HTMLDialogElement`.
+- Compose Dialog and Popover from flat component parts, including Trigger, Portal and Popup, with Backdrop or Positioner as appropriate. Base UI owns their interaction; trigger handles preserve typed payloads. Dialog refs now target the rendered Base UI part rather than an `HTMLDialogElement`.
+- Compose Menu and Tooltip from their root, trigger, portal, positioner and popup parts. Replace Tooltip's `content` and `describesHost` props with popup children and explicit `id`/`aria-describedby` associations when a description adds useful information. Trigger labels remain independent of hints.
 - Replace Select's `options`, property-name paths, `filter`, `onChange` and `defaultValue` API with typed keyed `items`, required controlled `value`, and `onValueChange`. Single empty selection is `null`; multiple empty selection is `[]`. Use `itemToStringLabel`, `itemToStringValue` and `isItemEqualToValue` for display, native submission and object equality. The caller owns selection and form-reset policy.
 - Rename confirmation `header` to `title`. Confirmation promises settle on decisions, replacement or provider unmount; callback failures reject their request's promise.
 
